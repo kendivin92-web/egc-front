@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spécifications de haut niveau — Application EGC</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --navy: #142541;
+      --navy-soft: #243b5e;
+      --gold: #c7a34b;
+      --ink: #253247;
+      --muted: #627087;
+      --line: #dce3ec;
+      --pale: #f3f6fa;
+      --green: #176b48;
+      --red: #a63f3f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #e9edf2;
+      color: var(--ink);
+      font: 10.5pt/1.48 "Segoe UI", Arial, sans-serif;
+    }
+    .page {
+      position: relative;
+      width: 210mm;
+      min-height: 297mm;
+      margin: 12mm auto;
+      padding: 17mm 18mm 18mm;
+      background: #fff;
+      box-shadow: 0 5px 24px #14254118;
+      break-after: page;
+      page-break-after: always;
+    }
+    .page:last-child { break-after: auto; page-break-after: auto; }
+    .running {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 7px;
+      margin-bottom: 19px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+      font-size: 8pt;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .running strong { color: var(--navy); }
+    h1, h2, h3 { color: var(--navy); line-height: 1.2; }
+    h1 { margin: 0 0 13px; font-size: 29pt; letter-spacing: -.03em; }
+    h2 {
+      margin: 0 0 13px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--gold);
+      font-size: 21pt;
+      letter-spacing: -.02em;
+    }
+    h3 { margin: 16px 0 6px; font-size: 12pt; }
+    p { margin: 7px 0; }
+    ul, ol { margin: 6px 0 10px; padding-left: 20px; }
+    li { margin: 4px 0; }
+    .footer {
+      position: absolute;
+      right: 18mm;
+      bottom: 9mm;
+      left: 18mm;
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid var(--line);
+      padding-top: 6px;
+      color: var(--muted);
+      font-size: 8pt;
+    }
+    .eyebrow {
+      margin: 0 0 9px;
+      color: var(--gold);
+      font-size: 9pt;
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .lead { color: var(--muted); font-size: 13pt; line-height: 1.55; }
+    .cover {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      color: white;
+      background:
+        radial-gradient(circle at 83% 17%, #c7a34b33, transparent 27%),
+        linear-gradient(145deg, #10203a 0%, #1f385b 74%, #2b496b 100%);
+    }
+    .cover .running { border-color: #ffffff33; color: #d7dfeb; }
+    .cover .running strong, .cover h1 { color: white; }
+    .cover h1 { max-width: 145mm; font-size: 35pt; }
+    .cover .lead { max-width: 143mm; color: #dbe3ee; }
+    .cover-mark {
+      display: grid;
+      width: 24mm;
+      height: 24mm;
+      margin-bottom: 18mm;
+      place-items: center;
+      border: 1px solid #c7a34b99;
+      border-radius: 50%;
+      color: #e0c775;
+      font-size: 18pt;
+      font-weight: 700;
+      letter-spacing: .05em;
+    }
+    .cover-meta {
+      display: grid;
+      max-width: 150mm;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 22mm;
+    }
+    .cover-meta div {
+      padding: 11px 13px;
+      border: 1px solid #ffffff30;
+      border-radius: 8px;
+      background: #ffffff0a;
+    }
+    .cover-meta span { display: block; color: #cad4e1; font-size: 8pt; }
+    .cover-meta strong { display: block; margin-top: 3px; color: white; }
+    .cover .footer { border-color: #ffffff33; color: #d7dfeb; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+    .card {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--pale);
+      break-inside: avoid;
+    }
+    .card h3 { margin-top: 0; }
+    .callout {
+      margin: 12px 0;
+      padding: 11px 13px;
+      border-left: 4px solid var(--gold);
+      border-radius: 0 7px 7px 0;
+      background: #fbf7e9;
+    }
+    .callout.danger { border-left-color: var(--red); background: #fff2f0; }
+    .callout.success { border-left-color: var(--green); background: #edf8f1; }
+    .tag {
+      display: inline-block;
+      margin: 2px 3px 2px 0;
+      padding: 3px 7px;
+      border-radius: 20px;
+      background: #e6ecf4;
+      color: var(--navy-soft);
+      font-size: 8pt;
+      font-weight: 700;
+    }
+    .tag.ok { background: #e4f3ea; color: var(--green); }
+    .tag.pending { background: #fbf0d2; color: #795c12; }
+    .tag.future { background: #fbe7e4; color: var(--red); }
+    table {
+      width: 100%;
+      margin: 9px 0 13px;
+      border-collapse: collapse;
+      font-size: 9pt;
+      break-inside: auto;
+    }
+    thead { display: table-header-group; }
+    tr { break-inside: avoid; }
+    th {
+      padding: 8px;
+      background: var(--navy);
+      color: white;
+      text-align: left;
+      vertical-align: top;
+    }
+    td {
+      padding: 7px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    tbody tr:nth-child(even) { background: #f6f8fb; }
+    code {
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: #edf1f6;
+      color: #203754;
+      font: 8.5pt Consolas, "Courier New", monospace;
+      overflow-wrap: anywhere;
+    }
+    .architecture {
+      display: grid;
+      grid-template-columns: 1fr 24mm 1fr 24mm 1fr;
+      align-items: center;
+      gap: 5px;
+      margin: 18px 0;
+    }
+    .architecture .node {
+      min-height: 24mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--pale);
+      text-align: center;
+    }
+    .architecture .node strong { color: var(--navy); }
+    .architecture .arrow { color: var(--gold); text-align: center; font-size: 19pt; }
+    .small { color: var(--muted); font-size: 8.5pt; }
+    .toc { columns: 2; column-gap: 20px; }
+    .toc li { break-inside: avoid; }
+    .stamp { color: #e1c970; font-size: 10pt; font-weight: 700; letter-spacing: .1em; }
+    @media print {
+      @page { size: A4; margin: 0; }
+      body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .page { margin: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div>
+      <div class="running"><strong>EGC · Application de l'Église</strong><span>Document de cadrage</span></div>
+      <div class="cover-mark">EGC</div>
+      <p class="stamp">SPÉCIFICATIONS DE HAUT NIVEAU</p>
+      <h1>Application mobile &amp; web<br>de l'Église Glorieuse du Christ</h1>
+      <p class="lead">Description fonctionnelle et technique de la solution, de son périmètre actuel, de son administration et des prérequis avant mise en production.</p>
+      <div class="cover-meta">
+        <div><span>Version du document</span><strong>1.0</strong></div>
+        <div><span>Date</span><strong>19 octobre 2026</strong></div>
+        <div><span>Plateformes</span><strong>Web responsive · Android</strong></div>
+        <div><span>État</span><strong>Prototype fonctionnel en évolution</strong></div>
+      </div>
+    </div>
+    <p class="small" style="max-width:145mm;color:#d7dfeb">Ce document décrit le comportement observé dans le code du projet. Il ne constitue ni une certification de sécurité ni une garantie de disponibilité en production.</p>
+    <div class="footer"><span>Document interne de référence</span><span>EGC · 1</span></div>
+  </section>
+
+  <section class="page">
+    <div class="running"><strong>EGC · Spécifications</strong><span>Vision &amp; périmètre</span></div>
+    <p class="eyebrow">01 · Vue d'ensemble</p>
+    <h2>Objectifs et périmètre</h2>
+    <p class="lead">L'application EGC est un point d'accès numérique aux contenus, activités et démarches de l'Église Glorieuse du Christ. Elle associe une interface React accessible sur le Web et sous Android à une API Express et une base SQLite pour les inscriptions et l'administration.</p>
+    <div class="grid2">
+      <article class="card"><h3>Objectifs utilisateurs</h3><ul><li>Découvrir les actualités, événements et contenus de la communauté.</li><li>Accéder aux lectures bibliques, aux ressources et aux directs.</li><li>Retrouver les assemblées et partager l'application avec ses proches.</li><li>Envoyer une demande d'inscription ou de préinscription.</li></ul></article>
+      <article class="card"><h3>Objectifs administratifs</h3><ul><li>Consulter les demandes reçues et leur statut.</li><li>Confirmer ou refuser une inscription.</li><li>Visualiser les intentions de don sans les confondre avec des paiements reçus.</li></ul></article>
+    </div>
+    <h3>Publics concernés</h3>
+    <p>Fidèles, visiteurs, personnes intéressées par les formations, équipe administrative de l'église et équipe technique chargée du déploiement et de la maintenance.</p>
+    <h3>Sommaire</h3>
+    <ol class="toc">
+      <li>Vue d'ensemble et périmètre</li>
+      <li>Architecture et technologies</li>
+      <li>Fonctionnalités de l'application</li>
+      <li>Administration et parcours métier</li>
+      <li>API et modèle de données</li>
+      <li>Sécurité et protection des données</li>
+      <li>Installation et exploitation</li>
+      <li>Limites actuelles et feuille de route</li>
+    </ol>
+    <div class="callout"><strong>Point de lecture essentiel :</strong> les statuts « disponible », « dépendant d'une configuration » et « à développer » sont distingués dans ce document pour ne pas présenter une maquette ou une intention comme une fonction opérationnelle.</div>
+    <div class="footer"><span>Spécifications de haut niveau · v1.0</span><span>EGC · 2</span></div>
+  </section>
+
+  <section class="page">
+    <div class="running"><strong>EGC · Spécifications</strong><span>Architecture</span></div>
+    <p class="eyebrow">02 · Conception technique</p>
+    <h2>Architecture générale</h2>
+    <div class="architecture">
+      <div class="node"><strong>Client EGC</strong><span>React · Vite<br>Web responsive</span></div>
+      <div class="arrow">⇄</div>
+      <div class="node"><strong>Conteneur Android</strong><span>Capacitor<br>Projet Gradle</span></div>
+      <div class="arrow">⇄</div>
+      <div class="node"><strong>API EGC</strong><span>Node.js · Express<br>Port 8080</span></div>
+    </div>
+    <div class="grid2">
+      <article class="card"><h3>Interface client</h3><p>Application monopage React, navigation par routes, styles adaptatifs aux téléphones et écrans larges, thème clair/sombre. Vite assemble les ressources Web.</p></article>
+      <article class="card"><h3>Application Android</h3><p>Capacitor encapsule la version Web dans un projet Android natif. Les ressources doivent être resynchronisées après les changements du front-end.</p></article>
+      <article class="card"><h3>API et stockage</h3><p>API REST Express avec validation des données et SQLite. La base locale est créée au premier démarrage à partir du schéma applicatif.</p></article>
+      <article class="card"><h3>Services externes</h3><p>Google Maps pour la recherche d'itinéraire, WhatsApp pour le partage, YouTube pour le direct si les identifiants de chaîne et de clé API sont configurés.</p></article>
+    </div>
+    <h3>Socle technologique constaté</h3>
+    <table>
+      <thead><tr><th>Couche</th><th>Technologie</th><th>Rôle</th></tr></thead>
+      <tbody>
+        <tr><td>Front-end</td><td>React 19, React Router 7, Vite 7</td><td>Écrans, navigation et production des ressources Web.</td></tr>
+        <tr><td>Mobile</td><td>Capacitor 8, Android/Gradle</td><td>Emballage et exécution de l'interface sur Android.</td></tr>
+        <tr><td>Back-end</td><td>Node.js ≥ 22.13, Express 5</td><td>API HTTP, authentification administrateur et opérations métier.</td></tr>
+        <tr><td>Base de données</td><td>SQLite (API Node intégrée)</td><td>Administrateurs, inscriptions, demandes de don, clés d'idempotence.</td></tr>
+        <tr><td>Sécurité</td><td>bcrypt, JWT, Helmet, CORS, Zod, rate limit</td><td>Hachage, session, validation et protection des routes d'administration.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout danger"><strong>Architecture de prototype :</strong> SQLite est prévu pour une instance unique sur un disque persistant. Ce choix et l'adresse locale de développement ne constituent pas un hébergement de production.</div>
+    <div class="footer"><span>Spécifications de haut niveau · v1.0</span><span>EGC · 3</span></div>
+  </section>
+
+  <section class="page">
+    <div class="running"><strong>EGC · Spécifications</strong><span>Fonctions utilisateur</span></div>
+    <p class="eyebrow">03 · Application publique</p>
+    <h2>Fonctionnalités côté utilisateur</h2>
+    <table>
+      <thead><tr><th>Rubrique</th><th>Description</th><th>État actuel</th></tr></thead>
+      <tbody>
+        <tr><td>Accueil</td><td>Tableau de bord, mise en avant des actualités, verset et accès aux rubriques. Un contenu d'annonce local est utilisé en secours.</td><td><span class="tag pending">Flux annonces à raccorder</span></td></tr>
+        <tr><td>Événements</td><td>Écran de consultation et filtres par catégories (culte, formation, prière, événements spéciaux, retraite).</td><td><span class="tag pending">Dépend de l'API annonces</span></td></tr>
+        <tr><td>Bible &amp; lecture</td><td>Accès à la lecture biblique, plan de lecture, historique de lecture et rappels selon les écrans disponibles.</td><td><span class="tag ok">Écrans présents</span></td></tr>
+        <tr><td>Direct</td><td>Recherche périodique d'un direct YouTube; sinon lien vers la chaîne.</td><td><span class="tag pending">Clé et chaîne YouTube requises</span></td></tr>
+        <tr><td>Formations</td><td>Choix d'une formation, collecte nom/prénom/téléphone/e-mail et envoi d'une préinscription.</td><td><span class="tag ok">API connectée</span></td></tr>
+        <tr><td>Inscription</td><td>Formulaire d'inscription communautaire avec réponse affichant l'état de la demande.</td><td><span class="tag ok">API connectée</span></td></tr>
+        <tr><td>Églises</td><td>Trois fiches : Brazzaville (Dix Maisons, en face de la station), Pointe-Noire (à côté de l'hôtel Elais) et Oyo. Liens Google Maps de recherche et d'itinéraire.</td><td><span class="tag ok">Repères fournis</span></td></tr>
+        <tr><td>Invitation</td><td>Ouvre WhatsApp avec un message prêt à partager. Le lien de téléchargement peut être défini via <code>VITE_APP_DOWNLOAD_URL</code>.</td><td><span class="tag ok">Partage disponible</span></td></tr>
+        <tr><td>Dons et dîmes</td><td>La demande MTN peut enregistrer une intention non payée. Airtel, cartes et PayPal ne réalisent pas de paiement.</td><td><span class="tag future">Aucun paiement actif</span></td></tr>
+        <tr><td>Prière</td><td>L'écran explique que l'envoi de demande de prière est en cours de développement.</td><td><span class="tag future">À développer</span></td></tr>
+        <tr><td>Profil, encouragement, témoignages, À propos</td><td>Rubriques de navigation et contenus présents dans le front-end.</td><td><span class="tag pending">Contenu/API à confirmer</span></td></tr>
+      </tbody>
+    </table>
+    <h3>Localisation et invitations</h3>
+    <p>Les adresses des églises sont utilisées comme termes de recherche Google Maps : aucun point GPS précis n'est affirmé. Les coordonnées exactes doivent être recueillies auprès des responsables avant de publier une géolocalisation garantie.</p>
+    <p>WhatsApp est ouvert sur le téléphone/navigateur de l'utilisateur; l'application ne lit pas le carnet d'adresses et n'envoie pas de message à sa place. La sélection du contact et l'envoi restent une action volontaire de l'utilisateur.</p>
+    <div class="footer"><span>Spécifications de haut niveau · v1.0</span><span>EGC · 4</span></div>
+  </section>
+
+  <section class="page">
+    <div class="running"><strong>EGC · Spécifications</strong><span>Administration</span></div>
+    <p class="eyebrow">04 · Gestion interne</p>
+    <h2>Espace administrateur</h2>
+    <p>L'espace d'administration se trouve sur la route <code>/admin</code>. L'accès est réservé à un compte administrateur initialisé par configuration locale; aucune inscription publique d'administrateur n'est prévue.</p>
+    <h3>Fonctions présentes</h3>
+    <ul>
+      <li>Connexion par e-mail et mot de passe; le jeton signé est conservé en mémoire dans l'interface et expire au bout de 20 minutes.</li>
+      <li>Consultation des demandes d'inscription et filtrage par statut.</li>
+      <li>Changement du statut d'une inscription en « confirmée » ou « refusée ».</li>
+      <li>Consultation des demandes de don avec étiquette explicite indiquant que le prestataire de paiement n'est pas configuré.</li>
+    </ul>
+    <h3>Cycle de vie d'une inscription</h3>
+    <div class="grid3">
+      <article class="card"><h3>1 · Demande</h3><p>La personne soumet ses coordonnées et l'activité; le statut initial est « à examiner ».</p></article>
+      <article class="card"><h3>2 · Examen</h3><p>L'administrateur consulte la demande et décide de la confirmer ou de la refuser.</p></article>
+      <article class="card"><h3>3 · Résultat</h3><p>Une demande confirmée pour la même activité et le même téléphone ne peut pas être répétée.</p></article>
+    </div>
+    <div class="callout"><strong>Règle anti-doublon :</strong> l'activité et le téléphone normalisé forment une clé unique. Une demande en attente ou refusée peut être mise à jour et resoumise; une demande confirmée bloque une nouvelle inscription pour le même couple.</div>
+    <h3>Cycle de vie d'un don</h3>
+    <p>Le front-end envoie une demande avec une clé d'idempotence. Le back-end conserve une intention MTN au statut <code>pending_provider</code>. Ce statut signifie « non payée, prestataire non raccordé »; aucune confirmation ni preuve de paiement n'est créée par le système.</p>
+    <div class="callout danger"><strong>Ne pas comptabiliser ces demandes comme des recettes :</strong> l'écran d'administration peut les afficher, mais le back-end ne prélève aucun montant et ne possède pas encore de confirmation MTN.</div>
+    <h3>Compte et responsabilités</h3>
+    <p>L'e-mail et le secret initial sont configurés dans <code>server/.env</code> sur la machine d'hébergement. Les secrets ne doivent figurer ni dans le dépôt, ni dans le PDF, ni dans un message ou une capture d'écran.</p>
+    <div class="footer"><span>Spécifications de haut niveau · v1.0</span><span>EGC · 5</span></div>
+  </section>
+
+  <section class="page">
+    <div class="running"><strong>EGC · Spécifications</strong><span>API &amp; données</span></div>
+    <p class="eyebrow">05 · Contrats applicatifs</p>
+    <h2>API et modèle de données</h2>
+    <p>Le serveur de développement écoute sur le port <code>8080</code>. Les routes métier implémentées dans l'API Express dédiée sont les suivantes :</p>
+    <table>
+      <thead><tr><th>Méthode &amp; route</th><th>Accès</th><th>Usage</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /api/health</code></td><td>Public</td><td>Contrôle élémentaire de disponibilité.</td></tr>
+        <tr><td><code>POST /api/admin/auth/login</code></td><td>Public limité</td><td>Authentification administrateur et émission d'un JWT.</td></tr>
+        <tr><td><code>POST /api/inscription</code></td><td>Public limité</td><td>Création ou mise à jour d'une demande d'inscription.</td></tr>
+        <tr><td><code>POST /api/formations</code></td><td>Public limité</td><td>Création ou mise à jour d'une demande de formation.</td></tr>
+        <tr><td><code>POST /api/pay</code></td><td>Public limité</td><td>Enregistrement idempotent d'une intention MTN non payée.</td></tr>
+        <tr><td><code>GET /api/admin/registrations</code></td><td>Administrateur</td><td>Liste et filtre des inscriptions.</td></tr>
+        <tr><td><code>PATCH /api/admin/registrations/:id</code></td><td>Administrateur</td><td>Modification du statut en confirmée ou refusée, sous contraintes métier.</td></tr>
+        <tr><td><code>GET /api/admin/donations</code></td><td>Administrateur</td><td>Consultation des intentions de don enregistrées.</td></tr>
+      </tbody>
+    </table>
+    <h3>Entités persistées</h3>
+    <table>
+      <thead><tr><th>Table</th><th>Rôle et données principales</th><th>Contraintes notables</th></tr></thead>
+      <tbody>
+        <tr><td><code>admins</code></td><td>Comptes administrateurs, rôle et mot de passe haché.</td><td>Adresse e-mail unique; aucune création publique.</td></tr>
+        <tr><td><code>registrations</code></td><td>Type, activité, identité, contact, réponses, statut et dates.</td><td>Unicité activité + téléphone normalisé.</td></tr>
+        <tr><td><code>donation_intents</code></td><td>Nom, téléphone, montant en XAF, opérateur, statut et référence prestataire.</td><td>Le statut ne représente pas une confirmation de paiement.</td></tr>
+        <tr><td><code>idempotency_requests</code></td><td>Clé, type et empreinte de requête, identifiant de ressource.</td><td>Clé unique; conflit si réutilisée pour un contenu différent.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout"><strong>Idempotence :</strong> une relance de la même requête de don avec la même clé renvoie la même intention. La même clé utilisée avec des données différentes est refusée. Les écritures importantes utilisent des transactions SQLite.</div>
+    <div class="callout danger"><strong>Dépendance d'intégration à signaler :</strong> le front-end interroge aussi <code>/api/annonces</code> pour les actualités/événements. Cette route n'est pas fournie par la nouvelle API Express décrite ici; un service d'annonces existant ou une intégration distincte est nécessaire.</div>
+    <div class="footer"><span>Spécifications de haut niveau · v1.0</span><span>EGC · 6</span></div>
+  </section>
+
+  <section class="page">
+    <div class="running"><strong>EGC · Spécifications</strong><span>Sécurité &amp; exploitation</span></div>
+    <p class="eyebrow">06–07 · Protection et déploiement</p>
+    <h2>Sécurité, données et exploitation</h2>
+    <h3>Mesures implémentées</h3>
+    <ul>
+      <li>Validation structurée des entrées côté serveur; requêtes SQL paramétrées et transactions pour protéger les opérations sensibles.</li>
+      <li>Mots de passe hachés avec bcrypt; JWT d'administration à durée limitée; vérification d'accès sur les routes privées.</li>
+      <li>Limitation des tentatives de connexion, des écritures publiques et des requêtes administrateur.</li>
+      <li>En-têtes de sécurité Helmet, CORS configuré par liste d'origines, taille des requêtes JSON limitée.</li>
+      <li>Clés d'idempotence et contraintes de base de données pour limiter les doublons.</li>
+      <li>Fichiers locaux <code>.env</code> et base SQLite exclus du contrôle de version.</li>
+    </ul>
+    <h3>Informations personnelles manipulées</h3>
+    <p>Les formulaires d'inscription peuvent conserver nom, prénom, téléphone, e-mail facultatif et réponses. Les intentions de don conservent nom, téléphone et montant proposé. Avant toute collecte réelle à grande échelle, publier une politique de confidentialité, limiter les accès, définir les durées de conservation et organiser les demandes de rectification/suppression conformément aux règles applicables.</p>
+    <h3>Démarrage de développement</h3>
+    <table>
+      <thead><tr><th>Action</th><th>Commande / configuration</th><th>Remarque</th></tr></thead>
+      <tbody>
+        <tr><td>Démarrer l'interface Web</td><td><code>npm run dev</code></td><td>Vite, généralement accessible sur le port 3000 ou le port affiché.</td></tr>
+        <tr><td>Démarrer le backend</td><td><code>npm run server:dev</code></td><td>Depuis la racine du projet; écoute sur 8080 par défaut.</td></tr>
+        <tr><td>Configurer le backend</td><td><code>server/.env</code></td><td>Contient secret JWT, compte administrateur et chemin SQLite; ne pas publier.</td></tr>
+        <tr><td>Pointer le front-end</td><td><code>VITE_API_URL</code></td><td>URL de l'API. La valeur de développement par défaut est localhost:8080.</td></tr>
+        <tr><td>Synchroniser Android</td><td><code>npm run android:sync</code></td><td>Reconstruit le front-end puis copie les assets dans le projet natif.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout"><strong>Prérequis techniques :</strong> Node.js 22.13 ou plus récent pour l'API SQLite intégrée; Android Studio, SDK Android et JDK 21 pour la compilation Android.</div>
+    <div class="callout danger"><strong>Attention Android :</strong> un appareil ou émulateur ne peut pas utiliser <code>localhost</code> pour joindre le PC hôte. Configurer une URL réseau joignable; en production, utiliser HTTPS et restreindre CORS aux origines réelles.</div>
+    <div class="footer"><span>Spécifications de haut niveau · v1.0</span><span>EGC · 7</span></div>
+  </section>
+
+  <section class="page">
+    <div class="running"><strong>EGC · Spécifications</strong><span>État &amp; feuille de route</span></div>
+    <p class="eyebrow">08 · Préparation de la suite</p>
+    <h2>Limites et priorités recommandées</h2>
+    <table>
+      <thead><tr><th>Priorité</th><th>Action recommandée</th><th>Résultat attendu</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag pending">P0</span></td><td>Déployer le front-end et l'API sur des adresses HTTPS publiques et configurées; préparer un stockage persistant.</td><td>Accès cohérent depuis Web et Android hors du poste local.</td></tr>
+        <tr><td><span class="tag pending">P0</span></td><td>Faire relire l'administration, définir le processus de récupération du compte et documenter l'exploitation des secrets.</td><td>Administration maintenable et accès maîtrisés.</td></tr>
+        <tr><td><span class="tag pending">P0</span></td><td>Raccorder les annonces et événements à une source/API réelle, puisque cette route n'est pas incluse dans le backend actuel.</td><td>Contenus dynamiques fiables sur l'accueil et l'écran événements.</td></tr>
+        <tr><td><span class="tag pending">P1</span></td><td>Obtenir les adresses/coordonnées GPS validées des trois églises et un vrai lien de téléchargement public.</td><td>Navigation cartographique précise et invitations utiles.</td></tr>
+        <tr><td><span class="tag pending">P1</span></td><td>Réaliser et tester le parcours demande de prière; confirmer la source et les droits des contenus bibliques.</td><td>Expérience utilisateur complète et contenus conformes.</td></tr>
+        <tr><td><span class="tag future">P1</span></td><td>Intégrer MTN MoMo officiel (sandbox puis production), callbacks/webhooks authentifiés, références fournisseur uniques et rapprochement.</td><td>Paiements réels et statut vérifié de bout en bout.</td></tr>
+        <tr><td><span class="tag pending">P2</span></td><td>Prévoir sauvegardes chiffrées, supervision, tests de restauration, politique de rétention et migration vers une base de production si nécessaire.</td><td>Résilience, traçabilité et capacité à évoluer.</td></tr>
+        <tr><td><span class="tag pending">P2</span></td><td>Renforcer les tests automatisés front-end, API, Android, accessibilité et tailles d'écran.</td><td>Réduire les régressions et mesurer la qualité.</td></tr>
+      </tbody>
+    </table>
+    <h3>Critères de préparation à une mise en production</h3>
+    <ul>
+      <li>URLs HTTPS, politique CORS vérifiée, secrets générés et conservés hors du dépôt.</li>
+      <li>Essais de connexion administrateur, contrôles de doublons, sauvegarde/restauration et vérification sur un appareil Android réel.</li>
+      <li>Test de tous les liens de partage et de localisation; contenu et coordonnées approuvés par l'église.</li>
+      <li>Pour tout paiement : paiement réel jamais simulé, confirmation exclusivement après vérification fiable du fournisseur.</li>
+      <li>Documentation de confidentialité, support, incidents, mises à jour et responsables opérationnels.</li>
+    </ul>
+    <div class="callout success"><strong>État livré :</strong> application Web responsive et projet Android; inscriptions reliées à l'API; espace d'administration pour le suivi des demandes et la consultation des intentions de don; contrôles anti-doublon et tests API. Les paiements réels, la prière interactive, la source d'annonces et l'hébergement de production restent à finaliser.</div>
+    <p class="small">Références de projet : <code>src/</code> (application client), <code>server/src/</code> (API et base), <code>ANDROID.md</code> et <code>server/README.md</code> (instructions techniques).</p>
+    <div class="footer"><span>Fin du document · Pour mise à jour, vérifier le code et les environnements déployés</span><span>EGC · 8</span></div>
+  </section>
+</body>
+</html>

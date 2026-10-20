@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">EGC</string>
+    <string name="title_activity_main">EGC</string>
+    <string name="package_name">com.egc.eglise</string>
+    <string name="custom_url_scheme">com.egc.eglise</string>
+</resources>
