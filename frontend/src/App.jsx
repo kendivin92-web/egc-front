@@ -56,6 +56,10 @@ const EVENTS_LOCAL = [
     cat: "Culte",
   },
 ];
+const getCarouselSlides = (announcements) =>
+  announcements.filter((announcement) =>
+    announcement.showInCarousel !== false && Boolean(announcement.image)
+  );
 const getImageUrl = (image) => {
   if (!image) return "";
 
@@ -80,7 +84,7 @@ export default function EgliseFoiVictoire() {
     const savedTheme = localStorage.getItem("theme");
     return savedTheme === "dark";
   });
-  const [carouselSlides, setCarouselSlides] = useState(() => {
+  const [announcements, setAnnouncements] = useState(() => {
     try {
       const cached = JSON.parse(localStorage.getItem("annonces") || "null");
       return Array.isArray(cached) && cached.length > 0 ? cached : EVENTS_LOCAL;
@@ -145,7 +149,7 @@ useEffect(() => {
            throw new Error("Format de réponse des annonces invalide.");
          }
 
-         setCarouselSlides(data.length > 0 ? data : EVENTS_LOCAL);
+         setAnnouncements(data);
          localStorage.setItem("annonces", JSON.stringify(data));
        } catch (error) {
          if (!controller.signal.aborted) {
@@ -180,15 +184,15 @@ useEffect(() => {
 
   // Auto-advance carousel
 
+  const carouselSlideCount = Math.min(getCarouselSlides(announcements).length, 4);
   useEffect(() => {
-    if (carouselSlides.length === 0) return;
-    const slideCount = Math.min(carouselSlides.length, 4);
+    if (carouselSlideCount === 0) return;
     const t = setInterval(
-      () => setSlide((s) => (s + 1) % slideCount),
+      () => setSlide((s) => (s + 1) % carouselSlideCount),
       5000
     );
     return () => clearInterval(t);
-  }, [carouselSlides.length]);
+  }, [carouselSlideCount]);
 
   // Hide/show nav on scroll
   const handleScroll = useCallback((e) => {
@@ -205,7 +209,7 @@ useEffect(() => {
   const onTouchEnd = (e) => {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    const slideCount = Math.min(carouselSlides.length, 4);
+    const slideCount = carouselSlideCount;
     if (Math.abs(diff) > 40 && slideCount > 0)
       setSlide((s) =>
         diff > 0
@@ -219,7 +223,7 @@ useEffect(() => {
   // "home" → "/"   |   les autres → "/<id>"
   const goTo = (id) => navigate(id === "home" ? "/" : `/${id}`);
 
-  const visibleSlides = carouselSlides.slice(-4);
+  const visibleSlides = getCarouselSlides(announcements).slice(-4);
   const renderHome = () => (
     <div className="home-dashboard">
       <section className="home-welcome">
@@ -249,7 +253,7 @@ useEffect(() => {
                   <span />
                   {item.contenu || item.type || "EGC • ACTUALITÉ"}
                 </span>
-                <h2>{item.titre || "Vivez votre foi avec nous"}</h2>
+                <h2>{item.title || item.titre || "Vivez votre foi avec nous"}</h2>
                 <button
                   type="button"
                   className="home-hero-cta"
@@ -371,15 +375,15 @@ useEffect(() => {
             Tout voir <Icon name="chevronRight" size={15} color={C.accent} />
           </button>
         </div>
-        {visibleSlides.length ? (
+        {announcements.length ? (
           <div className="home-news-list">
-            {carouselSlides.slice(-3).reverse().map((news) => (
+            {announcements.slice(-3).reverse().map((news) => (
               <article className="home-news-card" key={news.id}>
-                <img src={getImageUrl(news.image)} alt="" />
+                {news.image && <img src={getImageUrl(news.image)} alt="" />}
                 <div className="home-news-copy">
                   <span>{news.type || news.contenu || "Actualité"}</span>
-                  <h3>{news.titre}</h3>
-                  <p>{news.dateEvent || "Église Glorieuse du Christ"}</p>
+                  <h3>{news.title || news.titre}</h3>
+                  <p>{news.date || news.dateEvent || "Église Glorieuse du Christ"}</p>
                 </div>
                 <Icon name="chevronRight" size={17} color={C.textSub} />
               </article>

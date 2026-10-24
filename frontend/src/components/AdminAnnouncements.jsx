@@ -9,15 +9,30 @@ const EMPTY_FORM = {
   freq: "",
   contenu: "",
   image: "",
+  showInCarousel: false,
   published: true,
 };
+
+async function fetchAnnouncements(token) {
+  const response = await fetch(`${API}/api/admin/annonces`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const error = new Error(data.message || "Impossible de charger les annonces.");
+    error.status = response.status;
+    throw error;
+  }
+  if (!Array.isArray(data)) throw new Error("Réponse d’annonces invalide.");
+  return data;
+}
 
 export default function AdminAnnouncements({ token, onSessionExpired }) {
   const [announcements, setAnnouncements] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [imageFile, setImageFile] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -26,18 +41,11 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${API}/api/admin/annonces`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.status === 401) {
-        onSessionExpired();
-        return;
-      }
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Impossible de charger les annonces.");
+      const data = await fetchAnnouncements(token);
       setAnnouncements(data);
     } catch (requestError) {
       console.error("Admin announcements load failed:", requestError);
+      if (requestError.status === 401) onSessionExpired();
       setError(requestError.message || "Impossible de charger les annonces.");
     } finally {
       setLoading(false);
@@ -45,8 +53,24 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
   }, [token, onSessionExpired]);
 
   useEffect(() => {
-    loadAnnouncements();
-  }, [loadAnnouncements]);
+    let active = true;
+    fetchAnnouncements(token)
+      .then((data) => {
+        if (active) setAnnouncements(data);
+      })
+      .catch((requestError) => {
+        if (!active) return;
+        console.error("Admin announcements load failed:", requestError);
+        if (requestError.status === 401) onSessionExpired();
+        setError(requestError.message || "Impossible de charger les annonces.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [token, onSessionExpired]);
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
@@ -118,6 +142,7 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
       freq: announcement.freq,
       contenu: announcement.contenu,
       image: announcement.image,
+      showInCarousel: announcement.showInCarousel,
       published: announcement.published,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -161,8 +186,8 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
     <section className="admin-content">
       <div className="admin-list-heading">
         <div>
-          <h2>Gérer les annonces</h2>
-          <p>Publiez des événements avec une image, ou gardez-les en brouillon.</p>
+          <h2>Gérer les événements, séminaires et carrousel</h2>
+          <p>Publiez vos activités et choisissez les images à afficher sur le carrousel d’accueil.</p>
         </div>
         <button
           type="button"
@@ -187,7 +212,7 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
           <label>
             Catégorie
             <select name="type" value={form.type} onChange={updateForm}>
-              {["Culte", "Formation", "Prière", "Spéciaux", "Retraite"].map((type) => (
+              {["Culte", "Formation", "Séminaire", "Prière", "Spéciaux", "Retraite"].map((type) => (
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
@@ -219,6 +244,16 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
           <label className="admin-announcement-publish">
             <input type="checkbox" name="published" checked={form.published} onChange={updateForm} />
             Publier immédiatement
+          </label>
+          <label className="admin-announcement-publish">
+            <input
+              type="checkbox"
+              name="showInCarousel"
+              checked={form.showInCarousel}
+              onChange={updateForm}
+              disabled={!imageFile && !form.image}
+            />
+            Afficher l’image dans le carrousel d’accueil
           </label>
         </div>
         {imageFile && <p className="admin-announcement-file">Image sélectionnée : {imageFile.name}</p>}
@@ -252,7 +287,10 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
                     {announcement.published ? "Publiée" : "Brouillon"}
                   </span>
                 </div>
-                <p className="admin-record-activity">{announcement.type} · {announcement.date || "Date à confirmer"}</p>
+                <p className="admin-record-activity">
+                  {announcement.type} · {announcement.date || "Date à confirmer"} ·{" "}
+                  {announcement.showInCarousel ? "Dans le carrousel" : "Hors carrousel"}
+                </p>
                 <p>{announcement.lieu || "Lieu à confirmer"}</p>
               </div>
               <div className="admin-record-actions">

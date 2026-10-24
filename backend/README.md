@@ -59,7 +59,9 @@ generate its public domain.
 - Admin-only read access to donation intents.
 - Admin-only announcement creation, editing, publication, and deletion at
   `/api/admin/annonces`; published announcements are available at
-  `GET /api/annonces`.
+  `GET /api/annonces`. Announcements can be categorized as seminars and
+  individually selected for the home-page carousel; a selected announcement
+  must have an uploaded image.
 - Admin-only image uploads at `/api/admin/uploads` (JPEG, PNG, and WebP,
   maximum 5 MB). Images are stored under `backend/data/uploads/`.
 - Registration addresses (street/landmark, city, and neighborhood) are stored

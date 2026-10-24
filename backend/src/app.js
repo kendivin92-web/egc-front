@@ -37,14 +37,18 @@ const registrationStatusSchema = z.object({
 
 const announcementSchema = z.object({
   title: z.string().trim().min(2).max(120),
-  type: z.enum(["Culte", "Formation", "Prière", "Spéciaux", "Retraite"]),
+  type: z.enum(["Culte", "Formation", "Séminaire", "Prière", "Spéciaux", "Retraite"]),
   date: z.string().trim().max(80).default(""),
   lieu: z.string().trim().max(120).default(""),
   freq: z.string().trim().max(80).default(""),
   contenu: z.string().trim().min(1).max(3000),
   image: z.string().regex(/^\/uploads\/[0-9a-f-]+\.(png|jpg|webp)$/i).or(z.literal("")).default(""),
+  showInCarousel: z.boolean().default(false),
   published: z.boolean().default(true),
-}).strict();
+}).strict().refine(
+  (announcement) => !announcement.showInCarousel || Boolean(announcement.image),
+  { message: "Une image est nécessaire pour afficher l’annonce dans le carrousel.", path: ["image"] },
+);
 
 const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).max(1_000_000).default(1),
@@ -385,9 +389,13 @@ export function createApp({
 
   app.get("/api/annonces", (_request, response) => {
     const announcements = db.prepare(`
-      SELECT id, title, type, date, lieu, freq, contenu, image
+      SELECT id, title, type, date, lieu, freq, contenu, image,
+             show_in_carousel AS showInCarousel
       FROM announcements WHERE published = 1 ORDER BY id DESC
-    `).all();
+    `).all().map((announcement) => ({
+      ...announcement,
+      showInCarousel: Boolean(announcement.showInCarousel),
+    }));
     response.json(announcements);
   });
 
@@ -572,11 +580,13 @@ export function createApp({
   app.get("/api/admin/annonces", (_request, response) => {
     const announcements = db.prepare(`
       SELECT id, title, type, date, lieu, freq, contenu, image, published,
+             show_in_carousel AS showInCarousel,
              created_at, updated_at
       FROM announcements ORDER BY id DESC
     `).all().map((announcement) => ({
       ...announcement,
       published: Boolean(announcement.published),
+      showInCarousel: Boolean(announcement.showInCarousel),
     }));
     response.json(announcements);
   });
@@ -633,8 +643,9 @@ export function createApp({
     }
     const announcement = parsed.data;
     const result = db.prepare(`
-      INSERT INTO announcements (title, type, date, lieu, freq, contenu, image, published)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO announcements (
+        title, type, date, lieu, freq, contenu, image, show_in_carousel, published
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       announcement.title,
       announcement.type,
@@ -643,6 +654,7 @@ export function createApp({
       announcement.freq,
       announcement.contenu,
       announcement.image,
+      announcement.showInCarousel ? 1 : 0,
       announcement.published ? 1 : 0,
     );
     response.status(201).json({ id: result.lastInsertRowid, ...announcement });
@@ -659,7 +671,7 @@ export function createApp({
     const updated = db.prepare(`
       UPDATE announcements
       SET title = ?, type = ?, date = ?, lieu = ?, freq = ?, contenu = ?,
-          image = ?, published = ?, updated_at = CURRENT_TIMESTAMP
+          image = ?, show_in_carousel = ?, published = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(
       announcement.title,
@@ -669,6 +681,7 @@ export function createApp({
       announcement.freq,
       announcement.contenu,
       announcement.image,
+      announcement.showInCarousel ? 1 : 0,
       announcement.published ? 1 : 0,
       id,
     );

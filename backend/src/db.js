@@ -83,6 +83,17 @@ export function openDatabase(databasePath) {
     );
   `);
 
+  const announcementColumns = new Set(
+    db.prepare("PRAGMA table_info(announcements)").all().map((column) => column.name),
+  );
+  if (!announcementColumns.has("show_in_carousel")) {
+    db.exec(`
+      ALTER TABLE announcements
+      ADD COLUMN show_in_carousel INTEGER NOT NULL DEFAULT 1
+      CHECK (show_in_carousel IN (0, 1))
+    `);
+  }
+
   const registrationColumns = new Set(
     db.prepare("PRAGMA table_info(registrations)").all().map((column) => column.name),
   );

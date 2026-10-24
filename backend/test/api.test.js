@@ -136,6 +136,7 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
     freq: "Hebdomadaire",
     contenu: "Bienvenue à tous.",
     image: "",
+    showInCarousel: false,
     published: true,
   };
   const unauthorizedAnnouncementCreate = await jsonRequest(
@@ -155,6 +156,13 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
   const publicAnnouncements = await request("/api/annonces");
   assert.equal(publicAnnouncements.status, 200);
   assert.equal((await publicAnnouncements.json()).length, 1);
+  const missingCarouselImage = await jsonRequest(
+    "/api/admin/annonces",
+    "POST",
+    { ...announcement, showInCarousel: true },
+    adminHeaders,
+  );
+  assert.equal(missingCarouselImage.status, 400);
 
   const png = Buffer.from([
     137, 80, 78, 71, 13, 10, 26, 10,
@@ -172,14 +180,39 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
   assert.equal(uploadedResponse.status, 200);
   assert.equal(uploadedResponse.headers.get("content-type"), "image/png");
 
+  const seminar = {
+    ...announcement,
+    title: "Séminaire de la jeunesse",
+    type: "Séminaire",
+    image: uploaded.image,
+    showInCarousel: true,
+  };
+  const createdSeminar = await jsonRequest(
+    "/api/admin/annonces",
+    "POST",
+    seminar,
+    adminHeaders,
+  );
+  assert.equal(createdSeminar.status, 201);
+  const publicAnnouncementsWithSeminar = await (await request("/api/annonces")).json();
+  assert.equal(publicAnnouncementsWithSeminar.length, 2);
+  assert.equal(publicAnnouncementsWithSeminar[0].type, "Séminaire");
+  assert.equal(publicAnnouncementsWithSeminar[0].showInCarousel, true);
+  const adminAnnouncementList = await request("/api/admin/annonces", {
+    headers: adminHeaders,
+  });
+  assert.equal(adminAnnouncementList.status, 200);
+  const adminAnnouncements = await adminAnnouncementList.json();
+  assert.equal(adminAnnouncements[0].showInCarousel, true);
+
   const unpublishedAnnouncement = await jsonRequest(
     `/api/admin/annonces/${announcementData.id}`,
     "PATCH",
-    { ...announcement, image: uploaded.image, published: false },
+    { ...announcement, image: uploaded.image, showInCarousel: true, published: false },
     adminHeaders,
   );
   assert.equal(unpublishedAnnouncement.status, 200);
-  assert.equal((await (await request("/api/annonces")).json()).length, 0);
+  assert.equal((await (await request("/api/annonces")).json()).length, 1);
   const deleteAnnouncement = await request(
     `/api/admin/annonces/${announcementData.id}`,
     { method: "DELETE", headers: adminHeaders },
@@ -287,11 +320,27 @@ test("server refuses weak secrets and bootstrap passwords", () => {
   }), /ADMIN_EMAIL/);
 });
 
-test("existing registration addresses are migrated from stored answers", async () => {
+test("existing registration addresses and announcement carousel settings are migrated", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "egc-api-migration-test-"));
   const databasePath = path.join(directory, "legacy.sqlite");
   const legacyDb = new DatabaseSync(databasePath);
   legacyDb.exec(`
+    CREATE TABLE announcements (
+      id INTEGER PRIMARY KEY,
+      title TEXT NOT NULL,
+      type TEXT NOT NULL,
+      date TEXT NOT NULL DEFAULT '',
+      lieu TEXT NOT NULL DEFAULT '',
+      freq TEXT NOT NULL DEFAULT '',
+      contenu TEXT NOT NULL,
+      image TEXT NOT NULL DEFAULT '',
+      published INTEGER NOT NULL DEFAULT 1 CHECK (published IN (0, 1)),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    INSERT INTO announcements (title, type, contenu, image)
+    VALUES ('Culte', 'Culte', 'Annonce existante', '/uploads/legacy.jpg');
+
     CREATE TABLE registrations (
       id INTEGER PRIMARY KEY,
       registration_kind TEXT NOT NULL,
@@ -334,6 +383,10 @@ test("existing registration addresses are migrated from stored answers", async (
       city: "Brazzaville",
       district: "Bacongo",
     });
+    const announcement = db.prepare(
+      "SELECT show_in_carousel FROM announcements WHERE id = 1",
+    ).get();
+    assert.equal(announcement.show_in_carousel, 1);
   } finally {
     db.close();
     await rm(directory, { recursive: true, force: true });

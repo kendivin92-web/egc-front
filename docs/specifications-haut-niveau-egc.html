@@ -303,8 +303,8 @@
     <table>
       <thead><tr><th>Rubrique</th><th>Description</th><th>État actuel</th></tr></thead>
       <tbody>
-        <tr><td>Accueil</td><td>Tableau de bord, mise en avant des actualités, verset et accès aux rubriques. Un contenu d'annonce local est utilisé en secours.</td><td><span class="tag pending">Flux annonces à raccorder</span></td></tr>
-        <tr><td>Événements</td><td>Écran de consultation et filtres par catégories (culte, formation, prière, événements spéciaux, retraite).</td><td><span class="tag pending">Dépend de l'API annonces</span></td></tr>
+        <tr><td>Accueil</td><td>Carrousel d'images alimenté par les annonces publiées sélectionnées dans l'administration, avec contenus locaux en secours hors ligne.</td><td><span class="tag ok">API et gestion admin connectées</span></td></tr>
+        <tr><td>Événements</td><td>Écran de consultation et filtres par catégories (culte, formation, séminaire, prière, événements spéciaux, retraite).</td><td><span class="tag ok">API annonces connectée</span></td></tr>
         <tr><td>Bible &amp; lecture</td><td>Accès à la lecture biblique, plan de lecture, historique de lecture et rappels selon les écrans disponibles.</td><td><span class="tag ok">Écrans présents</span></td></tr>
         <tr><td>Direct</td><td>Recherche périodique d'un direct YouTube; sinon lien vers la chaîne.</td><td><span class="tag pending">Clé et chaîne YouTube requises</span></td></tr>
         <tr><td>Formations</td><td>Choix d'une formation, collecte nom/prénom/téléphone/e-mail et envoi d'une préinscription.</td><td><span class="tag ok">API connectée</span></td></tr>
@@ -333,6 +333,7 @@
       <li>Consultation des demandes d'inscription et filtrage par statut.</li>
       <li>Changement du statut d'une inscription en « confirmée » ou « refusée ».</li>
       <li>Consultation des demandes de don avec étiquette explicite indiquant que le prestataire de paiement n'est pas configuré.</li>
+      <li>Création et gestion des annonces et séminaires, import d'images et sélection des images affichées dans le carrousel d'accueil.</li>
     </ul>
     <h3>Cycle de vie d'une inscription</h3>
     <div class="grid3">
@@ -378,7 +379,7 @@
       </tbody>
     </table>
     <div class="callout"><strong>Idempotence :</strong> une relance de la même requête de don avec la même clé renvoie la même intention. La même clé utilisée avec des données différentes est refusée. Les écritures importantes utilisent des transactions SQLite.</div>
-    <div class="callout"><strong>Annonces :</strong> la route publique <code>GET /api/annonces</code> de l'API Express fournit au front-end les annonces publiées pour les actualités et événements.</div>
+    <div class="callout"><strong>Annonces :</strong> la route publique <code>GET /api/annonces</code> fournit les annonces publiées; chaque annonce peut aussi être activée ou désactivée du carrousel d'accueil dans l'administration. Les séminaires sont une catégorie d'annonce dédiée.</div>
     <div class="footer"><span>Spécifications de haut niveau · v1.0</span><span>EGC · 6</span></div>
   </section>
 
@@ -422,7 +423,6 @@
       <tbody>
         <tr><td><span class="tag pending">P0</span></td><td>Déployer le front-end et l'API sur des adresses HTTPS publiques et configurées; préparer un stockage persistant.</td><td>Accès cohérent depuis Web et Android hors du poste local.</td></tr>
         <tr><td><span class="tag pending">P0</span></td><td>Faire relire l'administration, définir le processus de récupération du compte et documenter l'exploitation des secrets.</td><td>Administration maintenable et accès maîtrisés.</td></tr>
-        <tr><td><span class="tag pending">P0</span></td><td>Raccorder les annonces et événements à une source/API réelle, puisque cette route n'est pas incluse dans le backend actuel.</td><td>Contenus dynamiques fiables sur l'accueil et l'écran événements.</td></tr>
         <tr><td><span class="tag pending">P1</span></td><td>Obtenir les adresses/coordonnées GPS validées des trois églises et un vrai lien de téléchargement public.</td><td>Navigation cartographique précise et invitations utiles.</td></tr>
         <tr><td><span class="tag pending">P1</span></td><td>Réaliser et tester le parcours demande de prière; confirmer la source et les droits des contenus bibliques.</td><td>Expérience utilisateur complète et contenus conformes.</td></tr>
         <tr><td><span class="tag future">P1</span></td><td>Intégrer MTN MoMo officiel (sandbox puis production), callbacks/webhooks authentifiés, références fournisseur uniques et rapprochement.</td><td>Paiements réels et statut vérifié de bout en bout.</td></tr>
@@ -438,7 +438,7 @@
       <li>Pour tout paiement : paiement réel jamais simulé, confirmation exclusivement après vérification fiable du fournisseur.</li>
       <li>Documentation de confidentialité, support, incidents, mises à jour et responsables opérationnels.</li>
     </ul>
-    <div class="callout success"><strong>État livré :</strong> application Web responsive et projet Android; inscriptions reliées à l'API; espace d'administration pour le suivi des demandes et la consultation des intentions de don; contrôles anti-doublon et tests API. Les paiements réels, la prière interactive, la source d'annonces et l'hébergement de production restent à finaliser.</div>
+    <div class="callout success"><strong>État livré :</strong> application Web responsive et projet Android; inscriptions, annonces, événements et images du carrousel reliés à l'API; espace d'administration pour le suivi des demandes et la consultation des intentions de don; contrôles anti-doublon et tests API. Les paiements réels, la prière interactive et l'hébergement de production restent à finaliser.</div>
     <p class="small">Références de projet : <code>src/</code> (application client), <code>server/src/</code> (API et base), <code>ANDROID.md</code> et <code>server/README.md</code> (instructions techniques).</p>
     <div class="footer"><span>Fin du document · Pour mise à jour, vérifier le code et les environnements déployés</span><span>EGC · 8</span></div>
   </section>

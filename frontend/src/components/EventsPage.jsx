@@ -59,6 +59,8 @@ const CATEGORIES = [
   { key: "Culte", label: "Culte", emoji: "☀️" },
   
   { key: "Formation", label: "Formation", emoji: "📖" },
+
+  { key: "Séminaire", label: "Séminaire", emoji: "🎤" },
   
   { key: "Prière", label: "Prière", emoji: "🤲" },
   
@@ -388,4 +390,3 @@ const CATEGORIES = [
   );
   
 }
-
