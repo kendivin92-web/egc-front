@@ -65,6 +65,25 @@ export default function Invitation({ dark }) {
         >
           Inviter via WhatsApp
         </a>
+        <a
+          href="/app-egc.apk"
+          download="EGC.apk"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: 48,
+            margin: "12px 0 0",
+            padding: "0 20px",
+            borderRadius: 12,
+            background: "#173b70",
+            color: "#ffffff",
+            fontWeight: 700,
+            textDecoration: "none",
+          }}
+        >
+          Télécharger l’application Android
+        </a>
         <p
           style={{
             color: colors.muted,

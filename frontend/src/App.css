@@ -240,6 +240,28 @@ textarea:focus-visible {
   line-height: 1.5;
 }
 
+.home-download-cta {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 0 16px;
+  border: 1px solid #173b70;
+  border-radius: 12px;
+  background: #173b70;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.home-download-cta:hover {
+  background: #244b78;
+  transform: translateY(-1px);
+}
+
 .home-hero {
   position: relative;
   min-height: 238px;
