@@ -7,20 +7,26 @@ const CHURCHES = [
     title: "Église principale",
     landmark: "Dix Maisons, en face de la station",
     search: "Église Glorieuse du Christ Dix Maisons face station Brazzaville",
+    phone: "+242 06 752 74 74",
+    phoneLink: "+242067527474",
   },
   {
     id: "pointe-noire",
     city: "Pointe-Noire",
     title: "Église Glorieuse du Christ",
-    landmark: "À côté de l'hôtel Elais",
-    search: "Église Glorieuse du Christ à côté de l'hôtel Elais Pointe-Noire",
+    landmark: "Immeuble l'Immoco, en diagonale de l'hôtel Elais et en face de Pain de Sucre",
+    search: "Immeuble l'Immoco en diagonale de l'hôtel Elais en face de Pain de Sucre Pointe-Noire",
+    phone: "+242 04 473 94 94",
+    phoneLink: "+242044739494",
   },
   {
     id: "oyo",
     city: "Oyo",
     title: "Église Glorieuse du Christ",
-    landmark: "Oyo, République du Congo",
-    search: "Église Glorieuse du Christ Oyo République du Congo",
+    landmark: "Dans la salle de la mairie centrale d'Oyo",
+    search: "Mairie centrale Oyo République du Congo",
+    phone: "+242 06 437 97 33",
+    phoneLink: "+242064379733",
   },
 ];
 
@@ -107,6 +113,16 @@ export default function LocationMap({ dark }) {
               >
                 {church.landmark}
               </p>
+              <a
+                href={`tel:${church.phoneLink}`}
+                style={{
+                  color: colors.text,
+                  marginBottom: 16,
+                  textDecoration: "none",
+                }}
+              >
+                Téléphone : {church.phone}
+              </a>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                 <a
                   href={mapSearchUrl}

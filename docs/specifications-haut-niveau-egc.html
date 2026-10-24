@@ -309,7 +309,7 @@
         <tr><td>Direct</td><td>Recherche périodique d'un direct YouTube; sinon lien vers la chaîne.</td><td><span class="tag pending">Clé et chaîne YouTube requises</span></td></tr>
         <tr><td>Formations</td><td>Choix d'une formation, collecte nom/prénom/téléphone/e-mail et envoi d'une préinscription.</td><td><span class="tag ok">API connectée</span></td></tr>
         <tr><td>Inscription</td><td>Formulaire d'inscription communautaire avec réponse affichant l'état de la demande.</td><td><span class="tag ok">API connectée</span></td></tr>
-        <tr><td>Églises</td><td>Trois fiches : Brazzaville (Dix Maisons, en face de la station), Pointe-Noire (à côté de l'hôtel Elais) et Oyo. Liens Google Maps de recherche et d'itinéraire.</td><td><span class="tag ok">Repères fournis</span></td></tr>
+        <tr><td>Églises</td><td>Trois fiches : Brazzaville (Dix Maisons, en face de la station, +242 06 752 74 74), Pointe-Noire (immeuble l'Immoco, en diagonale de l'hôtel Elais et en face de Pain de Sucre, +242 04 473 94 94) et Oyo (salle de la mairie centrale, +242 06 437 97 33). Liens Google Maps de recherche et d'itinéraire.</td><td><span class="tag ok">Repères fournis</span></td></tr>
         <tr><td>Invitation</td><td>Ouvre WhatsApp avec un message prêt à partager. Le lien de téléchargement peut être défini via <code>VITE_APP_DOWNLOAD_URL</code>.</td><td><span class="tag ok">Partage disponible</span></td></tr>
         <tr><td>Dons et dîmes</td><td>La demande MTN peut enregistrer une intention non payée. Airtel, cartes et PayPal ne réalisent pas de paiement.</td><td><span class="tag future">Aucun paiement actif</span></td></tr>
         <tr><td>Prière</td><td>L'écran explique que l'envoi de demande de prière est en cours de développement.</td><td><span class="tag future">À développer</span></td></tr>
@@ -317,7 +317,7 @@
       </tbody>
     </table>
     <h3>Localisation et invitations</h3>
-    <p>Les adresses des églises sont utilisées comme termes de recherche Google Maps : aucun point GPS précis n'est affirmé. Les coordonnées exactes doivent être recueillies auprès des responsables avant de publier une géolocalisation garantie.</p>
+    <p>Les repères fournis pour les églises sont utilisés comme termes de recherche Google Maps : aucun point GPS précis n'est affirmé. Les coordonnées GPS exactes doivent être recueillies auprès des responsables avant de publier une géolocalisation garantie.</p>
     <p>WhatsApp est ouvert sur le téléphone/navigateur de l'utilisateur; l'application ne lit pas le carnet d'adresses et n'envoie pas de message à sa place. La sélection du contact et l'envoi restent une action volontaire de l'utilisateur.</p>
     <div class="footer"><span>Spécifications de haut niveau · v1.0</span><span>EGC · 4</span></div>
   </section>
@@ -378,7 +378,7 @@
       </tbody>
     </table>
     <div class="callout"><strong>Idempotence :</strong> une relance de la même requête de don avec la même clé renvoie la même intention. La même clé utilisée avec des données différentes est refusée. Les écritures importantes utilisent des transactions SQLite.</div>
-    <div class="callout danger"><strong>Dépendance d'intégration à signaler :</strong> le front-end interroge aussi <code>/api/annonces</code> pour les actualités/événements. Cette route n'est pas fournie par la nouvelle API Express décrite ici; un service d'annonces existant ou une intégration distincte est nécessaire.</div>
+    <div class="callout"><strong>Annonces :</strong> la route publique <code>GET /api/annonces</code> de l'API Express fournit au front-end les annonces publiées pour les actualités et événements.</div>
     <div class="footer"><span>Spécifications de haut niveau · v1.0</span><span>EGC · 6</span></div>
   </section>
 

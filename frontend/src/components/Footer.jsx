@@ -133,7 +133,12 @@ export default function Footer({ dark }) {
                   size={14}
                   color={C.accent}
                 />
-                <span>+242 06 123 45 67</span>
+                <a
+                  href="tel:+242067527474"
+                  style={{ color: "inherit", textDecoration: "none" }}
+                >
+                  +242 06 752 74 74
+                </a>
               </div>
             </div>
           </div>
