@@ -179,6 +179,10 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
   const uploadedResponse = await request(uploaded.image);
   assert.equal(uploadedResponse.status, 200);
   assert.equal(uploadedResponse.headers.get("content-type"), "image/png");
+  assert.equal(
+    uploadedResponse.headers.get("cross-origin-resource-policy"),
+    "cross-origin",
+  );
 
   const seminar = {
     ...announcement,

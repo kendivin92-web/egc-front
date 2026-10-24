@@ -382,7 +382,10 @@ export function createApp({
     response.json({ service: "EGC API", status: "ok", health: "/api/health" });
   });
 
-  app.use("/uploads", express.static(uploadDirectory, {
+  app.use("/uploads", (_request, response, next) => {
+    response.set("Cross-Origin-Resource-Policy", "cross-origin");
+    next();
+  }, express.static(uploadDirectory, {
     dotfiles: "deny",
     index: false,
   }));
