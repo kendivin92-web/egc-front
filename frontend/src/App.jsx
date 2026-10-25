@@ -243,42 +243,21 @@ useEffect(() => {
       >
         {visibleSlides.length > 0 ? (
           visibleSlides.map((item, index) => (
-            <article
+            <button
               key={item.id}
+              type="button"
               className={`home-hero-slide${index === slide % visibleSlides.length ? " is-active" : ""}`}
               style={{
-                backgroundImage: `linear-gradient(90deg, rgba(9,31,67,.88) 0%, rgba(9,31,67,.56) 58%, rgba(9,31,67,.1) 100%), url("${getImageUrl(item.image)}")`,
+                backgroundImage: `url("${getImageUrl(item.image)}")`,
               }}
               aria-hidden={index !== slide % visibleSlides.length}
-            >
-              <div className="home-hero-copy">
-                <span className="home-hero-tag">
-                  <span />
-                  {item.contenu || item.type || "EGC • ACTUALITÉ"}
-                </span>
-                <h2>{item.title || item.titre || "Vivez votre foi avec nous"}</h2>
-                <button
-                  type="button"
-                  className="home-hero-cta"
-                  onClick={() => navigate("/events")}
-                  tabIndex={index === slide % visibleSlides.length ? 0 : -1}
-                >
-                  Découvrir nos activités
-                  <Icon name="chevronRight" size={16} color="#173b70" />
-                </button>
-              </div>
-            </article>
+              aria-label={`Ouvrir les actualités : ${item.title || item.titre || "Vivez votre foi avec nous"}`}
+              onClick={() => navigate("/events")}
+              tabIndex={index === slide % visibleSlides.length ? 0 : -1}
+            />
           ))
         ) : (
           <div className="home-hero-slide is-active home-hero-fallback">
-            <div className="home-hero-copy">
-              <span className="home-hero-tag"><span />ÉGLISE GLORIEUSE DU CHRIST</span>
-              <h2>Ensemble, avançons dans la foi.</h2>
-              <button type="button" className="home-hero-cta" onClick={() => navigate("/events")}>
-                Découvrir nos activités
-                <Icon name="chevronRight" size={16} color="#173b70" />
-              </button>
-            </div>
           </div>
         )}
         {visibleSlides.length > 1 && (

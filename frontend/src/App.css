@@ -264,7 +264,7 @@ textarea:focus-visible {
 
 .home-hero {
   position: relative;
-  min-height: 238px;
+  min-height: clamp(280px, 64vw, 420px);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 24px;
@@ -277,12 +277,13 @@ textarea:focus-visible {
 .home-hero-slide {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: flex-end;
-  padding: 24px;
+  width: 100%;
+  padding: 0;
+  border: 0;
   background-color: #173b70;
   background-position: center;
   background-size: cover;
+  cursor: pointer;
   opacity: 0;
   pointer-events: none;
   transform: scale(1.025);
@@ -299,73 +300,6 @@ textarea:focus-visible {
   background:
     radial-gradient(circle at 85% 22%, rgba(201, 168, 76, 0.35), transparent 26%),
     linear-gradient(130deg, #12203a, #27436c);
-}
-
-.home-hero-copy {
-  position: relative;
-  z-index: 1;
-  width: min(88%, 370px);
-  padding-bottom: 8px;
-  color: #fff;
-}
-
-.home-hero-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  padding: 7px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.11);
-  color: #f4dfaa;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  backdrop-filter: blur(12px);
-}
-
-.home-hero-tag > span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #d2b35e;
-  box-shadow: 0 0 10px #d2b35e;
-}
-
-.home-hero-copy h2 {
-  max-width: 330px;
-  margin: 0 0 17px;
-  color: #fff;
-  font-family: inherit;
-  font-size: clamp(23px, 6.5vw, 30px);
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1.16;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.24);
-}
-
-.home-hero-cta {
-  display: inline-flex;
-  min-height: 38px;
-  align-items: center;
-  gap: 8px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: #fff;
-  color: #173b70;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.16);
-  transition: transform 160ms ease, box-shadow 160ms ease;
-}
-
-.home-hero-cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 .home-hero-controls {
@@ -1665,16 +1599,7 @@ html[data-theme="dark"] .personalized-plan-check input {
 
   .home-hero {
     grid-column: 1 / span 8;
-    min-height: clamp(300px, 30vw, 390px);
-  }
-
-  .home-hero-slide {
-    padding: 36px;
-  }
-
-  .home-hero-copy h2 {
-    max-width: 470px;
-    font-size: clamp(30px, 3vw, 42px);
+    min-height: clamp(330px, 34vw, 460px);
   }
 
   .home-verse {
@@ -1862,14 +1787,6 @@ html[data-theme="dark"] .personalized-plan-check input {
 
   .theme-toggle {
     padding: 8px 9px;
-  }
-
-  .home-hero {
-    min-height: 218px;
-  }
-
-  .home-hero-slide {
-    padding: 19px;
   }
 
   .home-feature {
