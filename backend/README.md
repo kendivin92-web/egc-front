@@ -35,7 +35,10 @@ does not overwrite an existing account.
    - `JWT_SECRET` to a unique random value of at least 32 characters.
    - `ADMIN_EMAIL` and `ADMIN_PASSWORD` to the initial admin credentials;
      use a unique password of at least 14 characters.
-   - `PUBLIC_ORIGINS=capacitor://localhost,https://localhost,http://localhost`
+   - `TRUST_PROXY_HOPS=1` so login and API rate limits use the visitor IP
+     supplied through Railway's single trusted proxy. Keep this at `0` for
+     local development and only trust a proxy hop when the API is behind it.
+   - `PUBLIC_ORIGINS=https://egliseglorieuseduchrist.up.railway.app,capacitor://localhost,https://localhost,http://localhost`
    - `YOUTUBE_CHANNEL_ID=UCQi00Q-CJ5mGtbeMnrlqc4Q`
 4. Deploy the service. Railway uses `railway.json` to start the API and check
    `/api/health`. Generate a public domain in the service's Networking settings;

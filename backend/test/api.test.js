@@ -21,6 +21,11 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
     jwtSecret: JWT_SECRET,
     adminEmail: ADMIN_EMAIL,
     adminPassword: ADMIN_PASSWORD,
+    publicOrigins: [
+      "capacitor://localhost",
+      "https://egliseglorieuseduchrist.up.railway.app",
+    ],
+    trustProxyHops: 1,
   });
   const server = createServer(app);
   server.listen(0, "127.0.0.1");
@@ -45,14 +50,38 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
 
   const root = await request("/");
   assert.equal(root.status, 200);
+  assert.equal(root.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(root.headers.get("x-powered-by"), null);
   assert.deepEqual(await root.json(), {
     service: "EGC API",
     status: "ok",
     health: "/api/health",
   });
 
+  const allowedPreflight = await request("/api/annonces", {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://egliseglorieuseduchrist.up.railway.app",
+      "Access-Control-Request-Method": "GET",
+    },
+  });
+  assert.equal(allowedPreflight.status, 204);
+  assert.equal(
+    allowedPreflight.headers.get("access-control-allow-origin"),
+    "https://egliseglorieuseduchrist.up.railway.app",
+  );
+  const blockedPreflight = await request("/api/annonces", {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://untrusted.example",
+      "Access-Control-Request-Method": "GET",
+    },
+  });
+  assert.equal(blockedPreflight.headers.get("access-control-allow-origin"), null);
+
   const unauthorized = await request("/api/admin/registrations");
   assert.equal(unauthorized.status, 401);
+  assert.equal(unauthorized.headers.get("cache-control"), "no-store");
 
   const invalidLogin = await jsonRequest("/api/admin/auth/login", "POST", {
     email: ADMIN_EMAIL,
@@ -65,6 +94,7 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
     password: ADMIN_PASSWORD,
   });
   assert.equal(login.status, 200);
+  assert.equal(login.headers.get("cache-control"), "no-store");
   const { token } = await login.json();
   const adminHeaders = { Authorization: `Bearer ${token}` };
 
@@ -307,6 +337,26 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
   const donationRows = (await donations.json()).donations;
   assert.equal(donationRows.length, 1);
   assert.equal(donationRows[0].status, "pending_provider");
+
+  const forwardedIp = "198.51.100.10";
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const response = await jsonRequest("/api/admin/auth/login", "POST", {
+      email: ADMIN_EMAIL,
+      password: "wrong-password",
+    }, { "X-Forwarded-For": forwardedIp });
+    assert.equal(response.status, 401);
+  }
+  const rateLimited = await jsonRequest("/api/admin/auth/login", "POST", {
+    email: ADMIN_EMAIL,
+    password: "wrong-password",
+  }, { "X-Forwarded-For": forwardedIp });
+  assert.equal(rateLimited.status, 429);
+
+  const separateIp = await jsonRequest("/api/admin/auth/login", "POST", {
+    email: ADMIN_EMAIL,
+    password: "wrong-password",
+  }, { "X-Forwarded-For": "198.51.100.11" });
+  assert.equal(separateIp.status, 401);
 });
 
 test("server refuses weak secrets and bootstrap passwords", () => {
@@ -322,6 +372,13 @@ test("server refuses weak secrets and bootstrap passwords", () => {
     adminEmail: ADMIN_EMAIL,
     adminPassword: "short",
   }), /ADMIN_EMAIL/);
+  assert.throws(() => createApp({
+    databasePath: ":memory:",
+    jwtSecret: JWT_SECRET,
+    adminEmail: ADMIN_EMAIL,
+    adminPassword: ADMIN_PASSWORD,
+    trustProxyHops: -1,
+  }), /TRUST_PROXY_HOPS/);
 });
 
 test("existing registration addresses and announcement carousel settings are migrated", async () => {

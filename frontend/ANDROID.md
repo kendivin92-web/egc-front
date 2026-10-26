@@ -23,7 +23,9 @@ The APK is produced under `android/app/build/outputs/apk/`.
 Run `npm run android:sync` again after changing the web app so the Android
 project receives the latest build.
 
-The API URL must point to the deployed backend, without a trailing slash. The
+The API URL must point to the deployed backend over HTTPS, without a trailing slash.
+Production builds reject HTTP and localhost API URLs to prevent shipping an app
+that sends requests or credentials to an insecure or unreachable server. The
 Live and sermons screen gets its video list from that backend's `/api/videos`
 route; the videos will not load if the URL is missing, points to `localhost`,
 or the backend is not reachable from the phone. Production builds now stop

@@ -221,14 +221,22 @@ export default function AdminDashboard() {
   const [notice, setNotice] = useState("");
   const [exporting, setExporting] = useState(false);
 
-  const expireSession = useCallback(() => {
+  const clearSession = useCallback(() => {
     setSession(null);
-    setError("Votre session a expiré. Veuillez vous reconnecter.");
+    setRegistrations([]);
+    setDonations([]);
+    setSummary({ registrations: {}, donations: {} });
+    setRegistrationPagination(null);
+    setDonationPagination(null);
+    setLoading(false);
   }, []);
 
-  const loadData = useCallback(async (token, selectedSection, page) => {
-    setLoading(true);
-    setError("");
+  const expireSession = useCallback(() => {
+    clearSession();
+    setError("Votre session a expiré. Veuillez vous reconnecter.");
+  }, [clearSession]);
+
+  const loadData = useCallback(async (token, selectedSection, page, signal) => {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
       const isRegistrations = selectedSection === "registrations";
@@ -237,12 +245,12 @@ export default function AdminDashboard() {
       }
       const path = isRegistrations ? "/api/admin/registrations" : "/api/admin/donations";
       const response = await fetch(`${API}${path}?${params}`, {
+        signal,
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.status === 401) {
-        setSession(null);
-        setError("Votre session a expiré. Veuillez vous reconnecter.");
+        expireSession();
         return;
       }
       const data = await response.json();
@@ -258,18 +266,33 @@ export default function AdminDashboard() {
         setDonationPagination(data.pagination);
       }
     } catch (requestError) {
+      if (signal?.aborted) return;
       console.error(`Admin ${selectedSection} load failed:`, requestError);
       setError(requestError.message || "Impossible de charger les données.");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, expireSession]);
 
   useEffect(() => {
     if (!session || !["registrations", "donations"].includes(section)) return;
     const page = section === "registrations" ? registrationPage : donationPage;
-    loadData(session.token, section, page);
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        loadData(session.token, section, page, controller.signal);
+      }
+    });
+    return () => controller.abort();
   }, [session, section, registrationPage, donationPage, loadData]);
+
+  const handleLogin = (token, admin) => {
+    setLoading(true);
+    setError("");
+    setSection("registrations");
+    setRegistrationPage(1);
+    setSession({ token, admin });
+  };
 
   const exportRegistrations = async (format) => {
     setExporting(true);
@@ -336,9 +359,14 @@ export default function AdminDashboard() {
         },
         body: JSON.stringify({ status }),
       });
+      if (response.status === 401) {
+        expireSession();
+        return;
+      }
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Mise à jour impossible.");
       setNotice(`Inscription de ${registration.first_name} mise à jour.`);
+      setLoading(true);
       await loadData(session.token, section, registrationPage);
     } catch (requestError) {
       console.error("Admin registration update failed:", requestError);
@@ -347,7 +375,7 @@ export default function AdminDashboard() {
   };
 
   if (!session) {
-    return <LoginForm onLogin={(token, admin) => setSession({ token, admin })} />;
+    return <LoginForm onLogin={handleLogin} />;
   }
 
   const pendingCount = summary.registrations.pending ?? 0;
@@ -361,7 +389,15 @@ export default function AdminDashboard() {
           <h1>Administration</h1>
           <p>Connecté en tant que {session.admin.email}</p>
         </div>
-        <button type="button" className="admin-secondary-button" onClick={() => setSession(null)}>
+        <button
+          type="button"
+          className="admin-secondary-button"
+          onClick={() => {
+            clearSession();
+            setError("");
+            setNotice("");
+          }}
+        >
           Se déconnecter
         </button>
       </header>
@@ -382,6 +418,11 @@ export default function AdminDashboard() {
           type="button"
           className={section === "registrations" ? "is-active" : ""}
           onClick={() => {
+            setLoading(true);
+            setError("");
+            if (section === "registrations" && registrationPage === 1) {
+              loadData(session.token, "registrations", 1);
+            }
             setRegistrationPage(1);
             setSection("registrations");
           }}
@@ -392,6 +433,11 @@ export default function AdminDashboard() {
           type="button"
           className={section === "donations" ? "is-active" : ""}
           onClick={() => {
+            setLoading(true);
+            setError("");
+            if (section === "donations" && donationPage === 1) {
+              loadData(session.token, "donations", 1);
+            }
             setDonationPage(1);
             setSection("donations");
           }}
@@ -401,7 +447,11 @@ export default function AdminDashboard() {
         <button
           type="button"
           className={section === "announcements" ? "is-active" : ""}
-          onClick={() => setSection("announcements")}
+          onClick={() => {
+            setLoading(false);
+            setError("");
+            setSection("announcements");
+          }}
         >
           Annonces
         </button>
@@ -409,11 +459,15 @@ export default function AdminDashboard() {
           <button
             type="button"
             className="admin-refresh"
-            onClick={() => loadData(
-              session.token,
-              section,
-              section === "registrations" ? registrationPage : donationPage,
-            )}
+            onClick={() => {
+              setLoading(true);
+              setError("");
+              loadData(
+                session.token,
+                section,
+                section === "registrations" ? registrationPage : donationPage,
+              );
+            }}
             disabled={loading}
           >
             {loading ? "Actualisation…" : "Actualiser"}
@@ -436,6 +490,8 @@ export default function AdminDashboard() {
               <select
                 value={statusFilter}
                 onChange={(event) => {
+                  setLoading(true);
+                  setError("");
                   setStatusFilter(event.target.value);
                   setRegistrationPage(1);
                 }}
@@ -512,7 +568,10 @@ export default function AdminDashboard() {
           )}
           <PaginationControls
             pagination={registrationPagination}
-            onPageChange={setRegistrationPage}
+            onPageChange={(page) => {
+              setLoading(true);
+              setRegistrationPage(page);
+            }}
           />
         </section>
       ) : section === "donations" ? (
@@ -546,7 +605,10 @@ export default function AdminDashboard() {
           )}
           <PaginationControls
             pagination={donationPagination}
-            onPageChange={setDonationPage}
+            onPageChange={(page) => {
+              setLoading(true);
+              setDonationPage(page);
+            }}
           />
         </section>
       ) : (

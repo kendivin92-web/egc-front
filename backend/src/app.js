@@ -287,6 +287,7 @@ export function createApp({
   adminEmail,
   adminPassword,
   publicOrigins,
+  trustProxyHops = 0,
   youtubeChannelId = DEFAULT_YOUTUBE_CHANNEL_ID,
   fetchYouTubeFeed = globalThis.fetch,
 }) {
@@ -295,6 +296,9 @@ export function createApp({
   }
   if (!adminEmail || !adminPassword || adminPassword.length < 14) {
     throw new Error("ADMIN_EMAIL and an ADMIN_PASSWORD of at least 14 characters are required.");
+  }
+  if (!Number.isInteger(trustProxyHops) || trustProxyHops < 0 || trustProxyHops > 10) {
+    throw new Error("TRUST_PROXY_HOPS must be an integer between 0 and 10.");
   }
 
   const db = openDatabase(databasePath);
@@ -321,6 +325,7 @@ export function createApp({
 
   const app = express();
   app.disable("x-powered-by");
+  app.set("trust proxy", trustProxyHops);
   app.use(helmet());
   app.use(cors({
     origin(origin, callback) {
@@ -330,6 +335,10 @@ export function createApp({
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
   }));
   app.use(express.json({ limit: "32kb", strict: true }));
+  app.use("/api/admin", (_request, response, next) => {
+    response.set("Cache-Control", "no-store");
+    next();
+  });
 
   const publicWriteLimit = rateLimit({
     windowMs: 15 * 60 * 1000,
