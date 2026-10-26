@@ -1,6 +1,8 @@
 export default function Invitation({ dark }) {
+  const publishedSiteUrl = "https://egliseglorieuseduchrist.up.railway.app";
   const configuredDownloadUrl = import.meta.env.VITE_APP_DOWNLOAD_URL?.trim();
-  const downloadUrl = configuredDownloadUrl || window.location.origin;
+  const downloadUrl = configuredDownloadUrl
+    || (import.meta.env.PROD ? publishedSiteUrl : window.location.origin);
   const invitationMessage = configuredDownloadUrl
     ? `Bonjour ! Je t'invite à découvrir l'application de l'Église Glorieuse du Christ (EGC). Télécharge-la ici : ${downloadUrl}`
     : `Bonjour ! Je t'invite à découvrir l'application de l'Église Glorieuse du Christ (EGC). Retrouve-la ici : ${downloadUrl}`;
