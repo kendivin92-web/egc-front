@@ -1,16 +1,30 @@
 import { useCallback, useEffect, useState } from "react";
-import { Capacitor } from "@capacitor/core";
+import { API_URL } from "../services/apiConfig.js";
 
-const API = import.meta.env.VITE_API_URL?.replace(/\/+$/, "")
-  || (Capacitor.isNativePlatform() ? "" : "http://localhost:8080");
+const API = API_URL;
+const VIDEOS_CACHE_KEY = "egc-live-videos";
 const DEFAULT_CHANNEL_URL = "https://youtube.com/@egliseglorieuseduchrist";
 
 export const Lives = ({ dark }) => {
   const [live, setLive] = useState(null);
   const [liveLoading, setLiveLoading] = useState(true);
-  const [videos, setVideos] = useState([]);
+  const [videos, setVideos] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem(VIDEOS_CACHE_KEY) || "[]");
+      return Array.isArray(cached) ? cached : [];
+    } catch (error) {
+      console.error("Unable to read cached live videos:", error);
+      return [];
+    }
+  });
   const [selectedVideo, setSelectedVideo] = useState(null);
-  const [videosLoading, setVideosLoading] = useState(true);
+  const [videosLoading, setVideosLoading] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(VIDEOS_CACHE_KEY) || "[]").length === 0;
+    } catch {
+      return true;
+    }
+  });
   const [videosError, setVideosError] = useState("");
 
   const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
@@ -72,17 +86,25 @@ export const Lives = ({ dark }) => {
         if (!cancelled) {
           setVideos(data);
           setSelectedVideo((current) => current ?? data[0] ?? null);
+          localStorage.setItem(VIDEOS_CACHE_KEY, JSON.stringify(data));
         }
       } catch (error) {
         console.error("Unable to load Sunday sermons:", error);
         if (!cancelled) {
-          setVideosError(
-            error instanceof TypeError
-              ? "Impossible de joindre le serveur vidéo. Vérifiez l’adresse VITE_API_URL et que capacitor://localhost est autorisé dans PUBLIC_ORIGINS."
-              : error instanceof Error
-                ? error.message
-                : "Les vidéos sont momentanément indisponibles.",
-          );
+          const cached = (() => {
+            try {
+              return JSON.parse(localStorage.getItem(VIDEOS_CACHE_KEY) || "[]");
+            } catch {
+              return [];
+            }
+          })();
+          if (Array.isArray(cached) && cached.length > 0) {
+            setVideos(cached);
+            setSelectedVideo((current) => current ?? cached[0]);
+            setVideosError("Mode hors connexion : dernières prédications affichées.");
+          } else {
+            setVideosError("Les prédications sont momentanément indisponibles.");
+          }
         }
       } finally {
         if (!cancelled) setVideosLoading(false);
@@ -98,7 +120,7 @@ export const Lives = ({ dark }) => {
     };
   }, [verifierDirect]);
 
-  const liveVideoId = live?.actif
+  const liveVideoId = live?.actif && live.url
     ? new URL(live.url).searchParams.get("v")
     : null;
   const displayedVideo = liveVideoId
