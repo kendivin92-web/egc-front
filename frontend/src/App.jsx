@@ -360,7 +360,19 @@ useEffect(() => {
         {announcements.length ? (
           <div className="home-news-list">
             {announcements.slice(-3).reverse().map((news) => (
-              <article className="home-news-card" key={news.id}>
+              <article
+                className="home-news-card"
+                key={news.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate("/events", { state: { event: news } })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    navigate("/events", { state: { event: news } });
+                  }
+                }}
+              >
                 {news.image && <img src={getImageUrl(news.image)} alt="" />}
                 <div className="home-news-copy">
                   <span>{news.type || news.contenu || "Actualité"}</span>

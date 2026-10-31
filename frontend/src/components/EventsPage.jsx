@@ -1,9 +1,11 @@
 import { useState , useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 //pour les envenement
   const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 export default function EventsPage({ dark }) {
+const location = useLocation();
 const [EVENTS,setEVENTS] = useState(() => {
   try {
     const cached = JSON.parse(localStorage.getItem("annonces") || "[]");
@@ -81,8 +83,8 @@ const CATEGORIES = [
   
   const [activeCat, setActiveCat] = useState("tous");
   
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  
+  const [selectedEvent, setSelectedEvent] = useState(location.state?.event || null);
+
 
   
   const filteredEvents = activeCat === "tous" ? EVENTS : EVENTS.filter(e => e.type === activeCat);

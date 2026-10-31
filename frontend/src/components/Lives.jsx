@@ -124,11 +124,6 @@ export const Lives = ({ dark }) => {
       }}
     >
 
-      <div style={{fontSize:64}}>
-        🎥
-      </div>
-
-
       <h2
         style={{
           color:dark ? "#f0e6c8":"#173b70",
@@ -136,7 +131,7 @@ export const Lives = ({ dark }) => {
           fontWeight:700
         }}
       >
-        Direct et prédications
+        Live
       </h2>
 
       {liveLoading ? (
@@ -149,17 +144,6 @@ export const Lives = ({ dark }) => {
         </p>
       )}
 
-      <p
-        style={{
-          maxWidth: 440,
-          marginTop: 12,
-          color: dark ? "#a1a1a6" : "#6e6e73",
-          fontSize: 14,
-          lineHeight: 1.6,
-        }}
-      >
-        Regardez le direct ou retrouvez les prédications des quatre derniers dimanches, sans quitter l’application.
-      </p>
       {displayedVideo && (
         <section style={{ width: "100%", maxWidth: 760, marginTop: 20 }}>
           <div style={{ position: "relative", width: "100%", paddingTop: "56.25%" }}>
@@ -186,9 +170,6 @@ export const Lives = ({ dark }) => {
         </section>
       )}
       <section style={{ width: "100%", maxWidth: 900, marginTop: 28 }}>
-        <h3 style={{ color: dark ? "#f0e6c8" : "#173b70" }}>
-          Prédications des quatre derniers dimanches
-        </h3>
         {videosLoading ? (
           <p>Chargement des prédications…</p>
         ) : videosError ? (
