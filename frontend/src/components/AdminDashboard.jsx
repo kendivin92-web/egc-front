@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import AdminAnnouncements from "./AdminAnnouncements.jsx";
+import { API_URL } from "../services/apiConfig.js";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API = API_URL;
 
 const LABELS = {
   pending: "À examiner",

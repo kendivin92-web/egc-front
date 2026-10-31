@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { API_URL } from "../services/apiConfig.js";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API = API_URL;
 const EMPTY_FORM = {
   title: "",
   type: "Culte",
