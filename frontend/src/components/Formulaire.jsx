@@ -102,7 +102,8 @@ const steps = [
     {value:"Accueil",label:"Accueil"},{value:"Chantre",label:"Chantre/ Musique"},
     {value:"Sonorisation",label:"Sonorisation"},{value:"Sécurité",label:"Sécurité"},
     {value:"Logistique",label:"Logistique"},{value:"NTIC",label:"NTIC"},
-    {value:"Administration",label:"Administration / Finance"},{value:"Traduction",label:"Traduction / Langues"},
+    {value:"Administration",label:"Administration / Finance"},{value:"Communication",label:"Communication (Com)"},
+    {value:"Traduction",label:"Traduction / Langues"},
   ], required:true, showIf:(ans) => ans.statut === "En service" },
 ];
 

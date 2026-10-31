@@ -91,7 +91,7 @@ function printRegistrations(records, printWindow) {
 const CHURCH_STATUSES = ["Assistant(e)", "En service", "En formation"];
 const CHURCH_ROLES = [
   "Accueil", "Chantre", "Sonorisation", "Sécurité",
-  "Logistique", "NTIC", "Administration", "Traduction",
+  "Logistique", "NTIC", "Administration", "Communication", "Traduction",
 ];
 
 async function fetchAllRegistrations(token, statusFilter, churchStatusFilter, churchRoleFilter) {
