@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Rapport fonctionnel et rapport de bugs - EGC</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    body { font-family: Arial, sans-serif; color: #17233c; line-height: 1.45; font-size: 10.5pt; }
+    h1 { color: #173b70; font-size: 25pt; margin: 0 0 8px; }
+    h2 { color: #173b70; border-bottom: 2px solid #c9a84c; padding-bottom: 4px; margin-top: 24px; }
+    h3 { color: #315a91; margin-bottom: 4px; }
+    .cover { min-height: 245mm; display: flex; flex-direction: column; justify-content: center; }
+    .brand { color: #c9a84c; font-weight: bold; letter-spacing: 2px; }
+    .meta { color: #59677d; }
+    .box { background: #f1f5fa; border-left: 4px solid #c9a84c; padding: 10px 12px; margin: 10px 0; }
+    .ok { color: #18794e; font-weight: bold; }
+    .warn { color: #a15c00; font-weight: bold; }
+    .bug { border: 1px solid #d5dce7; border-radius: 6px; padding: 9px 11px; margin: 9px 0; break-inside: avoid; }
+    table { border-collapse: collapse; width: 100%; margin: 8px 0 14px; }
+    th { background: #173b70; color: white; text-align: left; }
+    th, td { border: 1px solid #cfd7e3; padding: 6px 7px; vertical-align: top; }
+    tr { break-inside: avoid; }
+    code { background: #eef1f5; padding: 1px 3px; }
+    ul { margin-top: 5px; }
+    .small { font-size: 9pt; color: #59677d; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <div class="brand">ÉGLISE GLORIEUSE DU CHRIST</div>
+    <h1>Rapport fonctionnel complet<br>et rapport de bugs</h1>
+    <p class="meta">Application EGC — Web, Android/Capacitor et API</p>
+    <p class="meta">Date du rapport : 31 octobre 2026</p>
+    <div class="box">
+      <strong>Objet :</strong> documenter les rubriques de l’application, leurs réponses et leur fonctionnement,
+      puis recenser les anomalies constatées, les corrections réalisées et les limites restantes.
+    </div>
+    <p class="small">Référentiel analysé : frontend React/Vite, backend Express/SQLite, configuration Capacitor et tests automatisés du dépôt.</p>
+  </section>
+
+  <h2>1. Résumé exécutif</h2>
+  <p>
+    L’application EGC est une application chrétienne multiplateforme permettant de consulter les contenus de
+    l’église, s’inscrire, consulter les événements, regarder les directs et prédications, faire une demande de don,
+    lire la Bible et administrer les inscriptions et annonces.
+  </p>
+  <p class="ok">État global après validation : fonctionnel, avec réserves documentées ci-dessous.</p>
+  <ul>
+    <li>Build frontend validé.</li>
+    <li>Lint frontend validé sans erreur.</li>
+    <li>Tests backend validés : 6 tests sur 6.</li>
+    <li>API de production Railway joignable sur HTTPS.</li>
+    <li>Correction publiée pour l’administration Android qui utilisait auparavant <code>localhost:8080</code>.</li>
+  </ul>
+
+  <h2>2. Architecture et fonctionnement général</h2>
+  <table>
+    <tr><th>Couche</th><th>Fonctionnement</th><th>État</th></tr>
+    <tr><td>Frontend</td><td>React avec Vite et React Router. Les écrans sont chargés par routes et certains composants sont chargés à la demande.</td><td class="ok">Opérationnel</td></tr>
+    <tr><td>Application Android</td><td>Capacitor embarque le bundle local. L’interface de base est disponible sans WebView distant ; Internet sert aux données et mises à jour.</td><td class="ok">Configuré</td></tr>
+    <tr><td>Backend</td><td>API Express avec authentification admin JWT, validation Zod, limitation, sécurité HTTP et CORS.</td><td class="ok">Opérationnel</td></tr>
+    <tr><td>Base de données</td><td>SQLite avec migrations automatiques pour inscriptions, statuts, fonctions, annonces, dons et idempotence.</td><td class="ok">Opérationnel</td></tr>
+    <tr><td>Synchronisation</td><td>Les annonces et événements sont mises en cache localement. Les requêtes d’actualisation nécessitent la connexion.</td><td class="ok">Opérationnel</td></tr>
+  </table>
+
+  <h2>3. Rubriques utilisateur</h2>
+  <table>
+    <tr><th>Rubrique</th><th>Route</th><th>Réponse / comportement attendu</th><th>Dépendance</th></tr>
+    <tr><td>Accueil</td><td><code>/</code></td><td>Présente l’église, les raccourcis, les actualités et les dernières cartes d’événements. Chaque actualité est cliquable séparément et ouvre son détail.</td><td>Cache local puis API</td></tr>
+    <tr><td>Événements / Vie de l’église</td><td><code>/events</code></td><td>Affiche les événements par catégorie : Culte, Formation, Séminaire, Prière, Spéciaux et Retraite. Un clic sur chaque carte ouvre les détails : titre, contenu, date, lieu et heure/fréquence.</td><td>Cache local puis API</td></tr>
+    <tr><td>Offrandes et dîmes</td><td><code>/give</code></td><td>Permet de saisir une intention de don avec nom, téléphone, montant et opérateur MTN Mobile Money. Le backend enregistre une demande ; le paiement réel reste dépendant du prestataire.</td><td>API pour enregistrer</td></tr>
+    <tr><td>Direct / Live</td><td><code>/live</code></td><td>Recherche un direct YouTube, affiche le lecteur si un direct existe, puis les quatre dernières prédications du dimanche. Les miniatures permettent de sélectionner une vidéo.</td><td>Internet et YouTube/API</td></tr>
+    <tr><td>Bible</td><td><code>/bible</code>, <code>/LectureBible</code></td><td>Permet la consultation de la Bible embarquée et de l’écran de lecture. Les données bibliques locales permettent une consultation hors connexion.</td><td>Principalement local</td></tr>
+    <tr><td>Formations</td><td><code>/formations</code></td><td>Présente les formations disponibles et permet d’envoyer une inscription spécifique à une activité.</td><td>API pour inscription</td></tr>
+    <tr><td>Demande de prière</td><td><code>/prayer</code></td><td>Écran de présentation de la fonctionnalité. La demande de prière complète est annoncée comme une fonctionnalité à venir.</td><td>Fonctionnalité en développement</td></tr>
+    <tr><td>Bibliothèques / Témoignages</td><td><code>/testimony</code></td><td>Présente les contenus de témoignage et de bibliothèque spirituelle disponibles dans l’application.</td><td>Selon contenu local</td></tr>
+    <tr><td>Inscription</td><td><code>/inscription</code></td><td>Formulaire multi-étapes : identité, localisation, contacts, baptême, statut dans l’église et département. Les coordonnées sont validées avant envoi.</td><td>API pour soumission</td></tr>
+    <tr><td>À propos</td><td><code>/about</code></td><td>Présente l’identité, la vision et les informations de l’église.</td><td>Local</td></tr>
+    <tr><td>Invitation</td><td><code>/invitation</code></td><td>Permet de préparer ou partager une invitation vers l’église.</td><td>Local / liens externes</td></tr>
+    <tr><td>Trouver mon église</td><td><code>/localisation</code></td><td>Affiche la localisation de l’église via une carte.</td><td>Carte et réseau selon fournisseur</td></tr>
+    <tr><td>Profil</td><td><code>/profile</code></td><td>Affiche l’écran profil prévu dans l’application.</td><td>Local</td></tr>
+    <tr><td>Plan de lecture</td><td><code>/PlanDeLecture</code>, <code>/plan-lecture-personnalise</code></td><td>Propose un plan biblique et une personnalisation de lecture.</td><td>Principalement local</td></tr>
+    <tr><td>Historique</td><td><code>/Historique</code></td><td>Affiche l’historique de lecture ou d’utilisation prévu par le module.</td><td>Stockage local</td></tr>
+    <tr><td>Rappels</td><td><code>/Rappel</code></td><td>Gère les rappels liés à la lecture et aux habitudes spirituelles.</td><td>Notifications natives selon permission</td></tr>
+    <tr><td>Encouragement</td><td><code>/encouragement</code></td><td>Affiche des contenus d’encouragement.</td><td>Local</td></tr>
+  </table>
+
+  <h2>4. Formulaire d’inscription : données et réponses</h2>
+  <ul>
+    <li><strong>Identité :</strong> nom, prénom et date de naissance.</li>
+    <li><strong>Localisation :</strong> adresse, ville et arrondissement.</li>
+    <li><strong>Contact :</strong> numéro principal obligatoire et second numéro facultatif.</li>
+    <li><strong>Foi :</strong> réponse baptisé(e) ou non.</li>
+    <li><strong>Statut dans l’église :</strong> Assistant(e), En service ou En formation.</li>
+    <li><strong>Département :</strong> Accueil, Chantre, Sonorisation, Sécurité, Logistique, NTIC, Administration, Communication (Com) ou Traduction. Le département apparaît lorsque le statut « En service » est choisi.</li>
+  </ul>
+  <p>Le backend empêche les doublons confirmés pour une même activité et un même numéro normalisé. Les nouvelles soumissions d’un dossier existant repassent en attente.</p>
+
+  <h2>5. Administration</h2>
+  <table>
+    <tr><th>Fonction</th><th>Fonctionnement</th></tr>
+    <tr><td>Connexion</td><td>Connexion par e-mail et mot de passe. Un jeton JWT protège les routes admin.</td></tr>
+    <tr><td>Inscriptions</td><td>Liste paginée, recherche par statut de traitement et filtres par statut dans l’église et fonction.</td></tr>
+    <tr><td>Départements</td><td>Filtres : Accueil, Chantre, Sonorisation, Sécurité, Logistique, NTIC, Administration, Communication et Traduction.</td></tr>
+    <tr><td>Traitement</td><td>Une inscription peut être validée ou refusée. Le statut métier et la fonction peuvent être modifiés directement sur la fiche.</td></tr>
+    <tr><td>Export</td><td>Export Excel et préparation PDF imprimable des inscriptions filtrées.</td></tr>
+    <tr><td>Dons</td><td>Consultation des demandes enregistrées et de leur état côté prestataire.</td></tr>
+    <tr><td>Annonces</td><td>Création, modification, publication, suppression et gestion de l’affichage dans le carrousel.</td></tr>
+  </table>
+
+  <h2>6. Rapport de bugs et anomalies</h2>
+  <div class="bug">
+    <h3>BUG-001 — Administration Android inaccessible avec l’ancienne APK</h3>
+    <p><strong>Gravité :</strong> élevée &nbsp; <strong>État :</strong> corrigé dans le code source, nouvel APK requis.</p>
+    <p><strong>Cause :</strong> l’application native utilisait <code>http://localhost:8080</code>. Sur un téléphone, localhost désigne le téléphone, pas l’API Railway.</p>
+    <p><strong>Correction :</strong> ajout d’une configuration API qui utilise automatiquement l’URL Railway sur Capacitor et localhost uniquement en développement web.</p>
+    <p><strong>Correction livrée :</strong> un nouvel APK Android version 1.1 a été généré avec le bundle local et l’URL API native corrigée.</p>
+  </div>
+  <div class="bug">
+    <h3>BUG-002 — Demande de prière non encore implémentée</h3>
+    <p><strong>Gravité :</strong> moyenne &nbsp; <strong>État :</strong> fonctionnalité en développement.</p>
+    <p>L’écran informe l’utilisateur que la fonctionnalité sera disponible dans une prochaine mise à jour. Aucun envoi de demande n’est actuellement décrit comme opérationnel.</p>
+  </div>
+  <div class="bug">
+    <h3>BUG-003 — Réseaux sociaux du pied de page</h3>
+    <p><strong>Gravité :</strong> faible &nbsp; <strong>État :</strong> à vérifier.</p>
+    <p>Les boutons Facebook, TikTok et YouTube sont présents mais certains liens sont encore des liens génériques <code>#</code>. Ils doivent être remplacés par les URL officielles de l’église.</p>
+  </div>
+  <div class="bug">
+    <h3>BUG-004 — Fonctionnalités réseau dépendantes d’Internet</h3>
+    <p><strong>Gravité :</strong> informative &nbsp; <strong>État :</strong> comportement attendu.</p>
+    <p>Les annonces non encore mises en cache, les inscriptions, les dons, l’administration, YouTube et la carte nécessitent une connexion. L’interface et les données locales déjà enregistrées restent disponibles hors connexion.</p>
+  </div>
+  <div class="bug">
+    <h3>BUG-005 — APK à régénérer après les corrections</h3>
+    <p><strong>Gravité :</strong> élevée pour la distribution &nbsp; <strong>État :</strong> corrigé pour la nouvelle APK.</p>
+    <p>Le code source est à jour sur GitHub et une nouvelle APK version 1.1 a été générée. Une application déjà installée doit être mise à jour ou réinstallée manuellement.</p>
+  </div>
+
+  <h2>7. Vérifications réalisées</h2>
+  <table>
+    <tr><th>Vérification</th><th>Résultat</th></tr>
+    <tr><td>Lint frontend</td><td class="ok">Réussi sans erreur</td></tr>
+    <tr><td>Build frontend Vite</td><td class="ok">Réussi</td></tr>
+    <tr><td>Tests API backend</td><td class="ok">6 réussis sur 6</td></tr>
+    <tr><td>Reachability API Railway HTTPS</td><td class="ok">Serveur joignable</td></tr>
+    <tr><td>Publication GitHub</td><td class="ok">Branche main à jour, commit 6ac5599 ; APK version 1.1 générée</td></tr>
+  </table>
+
+  <h2>8. Recommandations de mise en production</h2>
+  <ol>
+    <li>Installer l’APK version 1.1 sur un téléphone sans connexion puis avec connexion pour vérifier les deux modes.</li>
+    <li>Tester une connexion admin, l’affichage des inscriptions, les filtres de départements et la modification d’une fiche.</li>
+    <li>Remplacer les liens sociaux génériques par les liens officiels.</li>
+    <li>Implémenter la soumission réelle des demandes de prière si cette fonctionnalité est prioritaire.</li>
+    <li>Mettre en place une procédure de sauvegarde de la base SQLite et de vérification des variables secrètes Railway.</li>
+  </ol>
+
+  <p class="small">Fin du rapport — EGC — document généré à partir de l’état du code et des validations disponibles au 31 octobre 2026.</p>
+</body>
+</html>
