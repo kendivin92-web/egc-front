@@ -1,8 +1,5 @@
 {
   "appId": "com.egc.eglise",
   "appName": "EGC",
-  "webDir": "dist",
-  "server": {
-    "url": "https://egliseglorieuseduchrist.up.railway.app"
-  }
+  "webDir": "dist"
 }

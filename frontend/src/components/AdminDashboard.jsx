@@ -88,7 +88,13 @@ function printRegistrations(records, printWindow) {
   printWindow.close();
 }
 
-async function fetchAllRegistrations(token, statusFilter) {
+const CHURCH_STATUSES = ["Assistant(e)", "En service", "En formation"];
+const CHURCH_ROLES = [
+  "Accueil", "Chantre", "Sonorisation", "Sécurité",
+  "Logistique", "NTIC", "Administration", "Traduction",
+];
+
+async function fetchAllRegistrations(token, statusFilter, churchStatusFilter, churchRoleFilter) {
   const registrations = [];
   let totalPages = 1;
   for (let page = 1; page <= totalPages; page += 1) {
@@ -97,6 +103,8 @@ async function fetchAllRegistrations(token, statusFilter) {
       limit: String(EXPORT_PAGE_SIZE),
     });
     if (statusFilter !== "all") params.set("status", statusFilter);
+    if (churchStatusFilter !== "all") params.set("churchStatus", churchStatusFilter);
+    if (churchRoleFilter !== "all") params.set("churchRole", churchRoleFilter);
     const response = await fetch(`${API}/api/admin/registrations?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -216,6 +224,8 @@ export default function AdminDashboard() {
   const [registrationPage, setRegistrationPage] = useState(1);
   const [donationPage, setDonationPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [churchStatusFilter, setChurchStatusFilter] = useState("all");
+  const [churchRoleFilter, setChurchRoleFilter] = useState("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -242,6 +252,12 @@ export default function AdminDashboard() {
       const isRegistrations = selectedSection === "registrations";
       if (isRegistrations && statusFilter !== "all") {
         params.set("status", statusFilter);
+      }
+      if (isRegistrations && churchStatusFilter !== "all") {
+        params.set("churchStatus", churchStatusFilter);
+      }
+      if (isRegistrations && churchRoleFilter !== "all") {
+        params.set("churchRole", churchRoleFilter);
       }
       const path = isRegistrations ? "/api/admin/registrations" : "/api/admin/donations";
       const response = await fetch(`${API}${path}?${params}`, {
@@ -272,7 +288,7 @@ export default function AdminDashboard() {
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [statusFilter, expireSession]);
+  }, [statusFilter, churchStatusFilter, churchRoleFilter, expireSession]);
 
   useEffect(() => {
     if (!session || !["registrations", "donations"].includes(section)) return;
@@ -305,7 +321,12 @@ export default function AdminDashboard() {
           throw new Error("Autorisez les fenêtres contextuelles pour préparer le PDF.");
         }
       }
-      const records = await fetchAllRegistrations(session.token, statusFilter);
+      const records = await fetchAllRegistrations(
+        session.token,
+        statusFilter,
+        churchStatusFilter,
+        churchRoleFilter,
+      );
       if (format === "pdf") {
         printRegistrations(records, printWindow);
         return;
@@ -320,7 +341,9 @@ export default function AdminDashboard() {
         Adresse: registration.address || "",
         Ville: registration.city || "",
         Quartier: registration.district || "",
-        Statut: LABELS[registration.status] ?? registration.status,
+        "Statut de traitement": LABELS[registration.status] ?? registration.status,
+        "Statut dans l’église": registration.church_status || "",
+        Fonction: registration.church_role || "",
         "Date d’inscription": formatDate(registration.created_at),
       }));
       const safeRows = rows.map((row) => Object.fromEntries(
@@ -347,7 +370,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const updateRegistration = async (registration, status) => {
+  const updateRegistrationProfile = async (registration, changes) => {
     setError("");
     setNotice("");
     try {
@@ -357,7 +380,7 @@ export default function AdminDashboard() {
           Authorization: `Bearer ${session.token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(changes),
       });
       if (response.status === 401) {
         expireSession();
@@ -365,14 +388,17 @@ export default function AdminDashboard() {
       }
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Mise à jour impossible.");
-      setNotice(`Inscription de ${registration.first_name} mise à jour.`);
+      setNotice(`Fiche de ${registration.first_name} mise à jour.`);
       setLoading(true);
       await loadData(session.token, section, registrationPage);
     } catch (requestError) {
-      console.error("Admin registration update failed:", requestError);
+      console.error("Admin registration profile update failed:", requestError);
       setError(requestError.message || "Impossible de mettre à jour l’inscription.");
     }
   };
+
+  const updateRegistration = (registration, status) =>
+    updateRegistrationProfile(registration, { status });
 
   if (!session) {
     return <LoginForm onLogin={handleLogin} />;
@@ -502,6 +528,34 @@ export default function AdminDashboard() {
                 <option value="rejected">Refusées</option>
               </select>
             </label>
+            <label className="admin-filter">
+              <span>Statut dans l’église</span>
+              <select
+                value={churchStatusFilter}
+                onChange={(event) => {
+                  setLoading(true);
+                  setChurchStatusFilter(event.target.value);
+                  setRegistrationPage(1);
+                }}
+              >
+                <option value="all">Tous</option>
+                {CHURCH_STATUSES.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+            <label className="admin-filter">
+              <span>Fonction</span>
+              <select
+                value={churchRoleFilter}
+                onChange={(event) => {
+                  setLoading(true);
+                  setChurchRoleFilter(event.target.value);
+                  setRegistrationPage(1);
+                }}
+              >
+                <option value="all">Toutes</option>
+                {CHURCH_ROLES.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
           </div>
           <div className="admin-export-actions">
             <button
@@ -536,6 +590,42 @@ export default function AdminDashboard() {
                       {registration.registration_kind === "formation" ? "Formation" : "Inscription"}
                       {" · "}{registration.activity_name}
                     </p>
+                    <p>
+                      Statut dans l’église : <strong>{registration.church_status || "Non renseigné"}</strong>
+                      {" · "}Fonction : <strong>{registration.church_role || "Non renseignée"}</strong>
+                    </p>
+                    <div className="admin-record-fields">
+                      <label>
+                        <span>Statut dans l’église</span>
+                        <select
+                          value={registration.church_status || ""}
+                          onChange={(event) => updateRegistrationProfile(
+                            registration,
+                            { churchStatus: event.target.value },
+                          )}
+                        >
+                          <option value="">Non renseigné</option>
+                          {CHURCH_STATUSES.map((value) => (
+                            <option key={value} value={value}>{value}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Fonction</span>
+                        <select
+                          value={registration.church_role || ""}
+                          onChange={(event) => updateRegistrationProfile(
+                            registration,
+                            { churchRole: event.target.value },
+                          )}
+                        >
+                          <option value="">Non renseignée</option>
+                          {CHURCH_ROLES.map((value) => (
+                            <option key={value} value={value}>{value}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                     <p>{registration.phone}{registration.email ? ` · ${registration.email}` : ""}</p>
                     <p>
                       {registration.address || "Adresse non renseignée"}

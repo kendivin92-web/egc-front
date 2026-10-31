@@ -36,6 +36,8 @@ export function openDatabase(databasePath) {
       answers_json TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'confirmed', 'rejected')),
+      church_status TEXT NOT NULL DEFAULT '',
+      church_role TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       UNIQUE (activity_key, normalized_phone)
@@ -102,6 +104,11 @@ export function openDatabase(databasePath) {
       db.exec(`ALTER TABLE registrations ADD COLUMN ${column} TEXT NOT NULL DEFAULT ''`);
     }
   }
+  for (const column of ["church_status", "church_role"]) {
+    if (!registrationColumns.has(column)) {
+      db.exec(`ALTER TABLE registrations ADD COLUMN ${column} TEXT NOT NULL DEFAULT ''`);
+    }
+  }
   db.exec(`
     UPDATE registrations
     SET address = COALESCE(NULLIF(json_extract(answers_json, '$.adresse'), ''),
@@ -110,7 +117,13 @@ export function openDatabase(databasePath) {
                         NULLIF(json_extract(answers_json, '$.city'), ''), city),
         district = COALESCE(NULLIF(json_extract(answers_json, '$.arrondissement'), ''),
                             NULLIF(json_extract(answers_json, '$.district'), ''), district)
-    WHERE address = '' AND json_valid(answers_json)
+    WHERE json_valid(answers_json)
+  `);
+  db.exec(`
+    UPDATE registrations
+    SET church_status = COALESCE(NULLIF(json_extract(answers_json, '$.statut'), ''), church_status),
+        church_role = COALESCE(NULLIF(json_extract(answers_json, '$.services'), ''), church_role)
+    WHERE json_valid(answers_json)
   `);
 
   return db;

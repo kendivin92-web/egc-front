@@ -31,8 +31,10 @@ const donationSchema = z.object({
   operator: z.literal("MTN Mobile Money"),
 }).strict();
 
-const registrationStatusSchema = z.object({
-  status: z.enum(["confirmed", "rejected"]),
+const churchProfileSchema = z.object({
+  status: z.enum(["pending", "confirmed", "rejected"]).optional(),
+  churchStatus: z.string().trim().max(80).optional(),
+  churchRole: z.string().trim().max(120).optional(),
 }).strict();
 
 const announcementSchema = z.object({
@@ -158,6 +160,8 @@ function parseRegistration(body, kind) {
       address: address.trim(),
       city: city.trim(),
       district: district.trim(),
+      churchStatus: typeof answers.statut === "string" ? answers.statut.trim().slice(0, 80) : "",
+      churchRole: typeof answers.services === "string" ? answers.services.trim().slice(0, 120) : "",
       answers,
     },
   };
@@ -206,7 +210,7 @@ function createRegistration(db, value, idempotencyKey) {
         UPDATE registrations
         SET registration_kind = ?, activity_name = ?, first_name = ?, last_name = ?,
             phone = ?, email = ?, address = ?, city = ?, district = ?,
-            answers_json = ?, status = 'pending',
+            answers_json = ?, church_status = ?, church_role = ?, status = 'pending',
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(
@@ -220,6 +224,8 @@ function createRegistration(db, value, idempotencyKey) {
         value.city,
         value.district,
         answersJson,
+        value.churchStatus,
+        value.churchRole,
         existing.id,
       );
       registration = db.prepare("SELECT * FROM registrations WHERE id = ?").get(existing.id);
@@ -228,7 +234,8 @@ function createRegistration(db, value, idempotencyKey) {
         INSERT INTO registrations (
           registration_kind, activity_key, activity_name, first_name, last_name,
           phone, normalized_phone, email, address, city, district, answers_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          , church_status, church_role
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         value.registrationKind,
         value.activityKey,
@@ -242,6 +249,8 @@ function createRegistration(db, value, idempotencyKey) {
         value.city,
         value.district,
         answersJson,
+        value.churchStatus,
+        value.churchRole,
       );
       registration = db.prepare("SELECT * FROM registrations WHERE id = ?").get(result.lastInsertRowid);
       created = true;
@@ -724,6 +733,12 @@ export function createApp({
       response.status(400).json({ message: "Filtre de statut invalide." });
       return;
     }
+    const churchStatus = typeof request.query.churchStatus === "string"
+      ? request.query.churchStatus.trim().slice(0, 80)
+      : "";
+    const churchRole = typeof request.query.churchRole === "string"
+      ? request.query.churchRole.trim().slice(0, 120)
+      : "";
 
     const pagination = paginationSchema.safeParse(request.query);
     if (!pagination.success) {
@@ -732,23 +747,31 @@ export function createApp({
     }
 
     const { limit } = pagination.data;
-    const total = status
-      ? db.prepare("SELECT COUNT(*) AS total FROM registrations WHERE status = ?").get(status).total
-      : db.prepare("SELECT COUNT(*) AS total FROM registrations").get().total;
+    const filters = [];
+    const values = [];
+    if (status) {
+      filters.push("status = ?");
+      values.push(status);
+    }
+    if (churchStatus) {
+      filters.push("church_status = ?");
+      values.push(churchStatus);
+    }
+    if (churchRole) {
+      filters.push("church_role = ?");
+      values.push(churchRole);
+    }
+    const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+    const total = db.prepare(`SELECT COUNT(*) AS total FROM registrations ${where}`).get(...values).total;
     const totalPages = Math.ceil(total / limit);
     const page = Math.min(pagination.data.page, Math.max(1, totalPages));
     const offset = (page - 1) * limit;
-    const query = status
-      ? db.prepare(`
+    const query = db.prepare(`
         SELECT id, registration_kind, activity_name, first_name, last_name, phone,
-                 email, address, city, district, status, created_at, updated_at
-        FROM registrations WHERE status = ? ORDER BY id DESC LIMIT ? OFFSET ?
-      `).all(status, limit, offset)
-      : db.prepare(`
-        SELECT id, registration_kind, activity_name, first_name, last_name, phone,
-               email, address, city, district, status, created_at, updated_at
-        FROM registrations ORDER BY id DESC LIMIT ? OFFSET ?
-      `).all(limit, offset);
+               email, address, city, district, status, church_status, church_role,
+               created_at, updated_at
+        FROM registrations ${where} ORDER BY id DESC LIMIT ? OFFSET ?
+      `).all(...values, limit, offset);
     response.json({
       registrations: query,
       summary: getAdminSummary(db),
@@ -758,29 +781,51 @@ export function createApp({
 
   app.patch("/api/admin/registrations/:id", (request, response) => {
     const id = Number(request.params.id);
-    const parsed = registrationStatusSchema.safeParse(request.body);
+    const parsed = churchProfileSchema.safeParse(request.body);
     if (!Number.isSafeInteger(id) || id < 1 || !parsed.success) {
       response.status(400).json({ message: "Demande de mise à jour invalide." });
       return;
     }
 
+    const fields = [];
+    const values = [];
+    const statusOnly = parsed.data.status !== undefined
+      && parsed.data.churchStatus === undefined
+      && parsed.data.churchRole === undefined;
+    if (parsed.data.status) {
+      fields.push("status = ?");
+      values.push(parsed.data.status);
+    }
+    if (parsed.data.churchStatus !== undefined) {
+      fields.push("church_status = ?");
+      values.push(parsed.data.churchStatus);
+    }
+    if (parsed.data.churchRole !== undefined) {
+      fields.push("church_role = ?");
+      values.push(parsed.data.churchRole);
+    }
+    if (!fields.length) {
+      response.status(400).json({ message: "Aucune modification fournie." });
+      return;
+    }
+    fields.push("updated_at = CURRENT_TIMESTAMP");
+    values.push(id);
     const updated = db.prepare(`
-      UPDATE registrations
-      SET status = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND status = 'pending'
-    `).run(parsed.data.status, id);
+      UPDATE registrations SET ${fields.join(", ")}
+      WHERE id = ?${statusOnly ? " AND status = 'pending'" : ""}
+    `).run(...values);
     if (updated.changes === 0) {
       const current = db.prepare("SELECT id, status FROM registrations WHERE id = ?").get(id);
       if (!current) {
         response.status(404).json({ message: "Inscription introuvable." });
         return;
       }
-      if (current.status !== parsed.data.status) {
+      if (statusOnly && current.status !== parsed.data.status) {
         response.status(409).json({ message: "Cette inscription a déjà été traitée." });
         return;
       }
     }
-    response.json({ success: true, id, status: parsed.data.status });
+    response.json({ success: true, id, ...parsed.data });
   });
 
   app.get("/api/admin/donations", (request, response) => {

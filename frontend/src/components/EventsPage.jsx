@@ -4,7 +4,15 @@ import { useState , useEffect } from "react";
   const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 export default function EventsPage({ dark }) {
-const [EVENTS,setEVENTS] = useState([]);
+const [EVENTS,setEVENTS] = useState(() => {
+  try {
+    const cached = JSON.parse(localStorage.getItem("annonces") || "[]");
+    return Array.isArray(cached) ? cached : [];
+  } catch (error) {
+    console.error("Unable to read cached church announcements:", error);
+    return [];
+  }
+});
 const [eventsUnavailable, setEventsUnavailable] = useState(false);
 const C = {
   bg: dark ? "#1c1c1e" : "#f5f5f7",
@@ -27,16 +35,17 @@ const C = {
           const data = await res.json();
           if (!Array.isArray(data)) throw new Error("Réponse d’annonces invalide.");
           setEVENTS(data);
+          localStorage.setItem("annonces", JSON.stringify(data));
           setEventsUnavailable(false);
          
         } catch (error) {
           console.error("Unable to load church announcements:", error);
-          setEventsUnavailable(true);
+          setEventsUnavailable(EVENTS.length === 0);
          
         } 
       };
       fetchFideles();
-    }, []);
+    }, [EVENTS.length]);
   
  /* const EVENTS = [
   
@@ -198,13 +207,21 @@ const CATEGORIES = [
   
             {filteredEvents.map(event => (
   
-              <div
+              <article
   
                 key={event.id}
   
                 className="event-card bg-white rounded-3xl overflow-hidden cursor-pointer shadow-sm hover:shadow-lg"
   
                 onClick={() => setSelectedEvent(event)}
+                onKeyDown={(keyboardEvent) => {
+                  if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
+                    keyboardEvent.preventDefault();
+                    setSelectedEvent(event);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
   
               >
   
@@ -248,7 +265,7 @@ const CATEGORIES = [
   
                 </div>
   
-              </div>
+              </article>
   
             ))}
   
