@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { API_URL } from "../services/apiConfig.js";
 
 const API = API_URL;
+const ADMIN_ANNOUNCEMENTS_CACHE_KEY = "egc-admin-announcements";
 const EMPTY_FORM = {
   title: "",
   type: "Culte",
@@ -24,12 +25,23 @@ async function fetchAnnouncements(token) {
     error.status = response.status;
     throw error;
   }
+
   if (!Array.isArray(data)) throw new Error("Réponse d’annonces invalide.");
   return data;
 }
 
+function readCachedAnnouncements() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(ADMIN_ANNOUNCEMENTS_CACHE_KEY) || "[]");
+    return Array.isArray(cached) ? cached : [];
+  } catch (error) {
+    console.error("Unable to read offline announcements cache:", error);
+    return [];
+  }
+}
+
 export default function AdminAnnouncements({ token, onSessionExpired }) {
-  const [announcements, setAnnouncements] = useState([]);
+  const [announcements, setAnnouncements] = useState(readCachedAnnouncements);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [imageFile, setImageFile] = useState(null);
@@ -44,6 +56,7 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
     try {
       const data = await fetchAnnouncements(token);
       setAnnouncements(data);
+      localStorage.setItem(ADMIN_ANNOUNCEMENTS_CACHE_KEY, JSON.stringify(data));
     } catch (requestError) {
       console.error("Admin announcements load failed:", requestError);
       if (requestError.status === 401) onSessionExpired();
@@ -58,12 +71,17 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
     fetchAnnouncements(token)
       .then((data) => {
         if (active) setAnnouncements(data);
+        localStorage.setItem(ADMIN_ANNOUNCEMENTS_CACHE_KEY, JSON.stringify(data));
       })
       .catch((requestError) => {
         if (!active) return;
         console.error("Admin announcements load failed:", requestError);
         if (requestError.status === 401) onSessionExpired();
-        setError(requestError.message || "Impossible de charger les annonces.");
+        if (readCachedAnnouncements().length > 0) {
+          setNotice("Mode hors connexion : dernières annonces synchronisées affichées.");
+        } else {
+          setError("Connexion indisponible et aucune annonce synchronisée.");
+        }
       })
       .finally(() => {
         if (active) setLoading(false);

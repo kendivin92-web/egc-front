@@ -18,6 +18,26 @@ const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
 });
 const PAGE_SIZE = 25;
 const EXPORT_PAGE_SIZE = 100;
+const ADMIN_SESSION_KEY = "egc-admin-session";
+const ADMIN_DATA_KEY = "egc-admin-data";
+
+function readCache(key, fallback = null) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "null");
+    return value ?? fallback;
+  } catch (error) {
+    console.error("Unable to read offline admin cache:", error);
+    return fallback;
+  }
+}
+
+function writeCache(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error("Unable to save offline admin cache:", error);
+  }
+}
 
 function formatDate(value) {
   const date = new Date(`${value.replace(" ", "T")}Z`);
@@ -215,7 +235,7 @@ function LoginForm({ onLogin }) {
 }
 
 export default function AdminDashboard() {
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(() => readCache(ADMIN_SESSION_KEY));
   const [section, setSection] = useState("registrations");
   const [registrations, setRegistrations] = useState([]);
   const [donations, setDonations] = useState([]);
@@ -234,6 +254,7 @@ export default function AdminDashboard() {
 
   const clearSession = useCallback(() => {
     setSession(null);
+    localStorage.removeItem(ADMIN_SESSION_KEY);
     setRegistrations([]);
     setDonations([]);
     setSummary({ registrations: {}, donations: {} });
@@ -275,6 +296,12 @@ export default function AdminDashboard() {
         throw new Error(data.message || "Chargement impossible.");
       }
       setSummary(data.summary);
+      writeCache(ADMIN_DATA_KEY, {
+        section: selectedSection,
+        page,
+        filters: { statusFilter, churchStatusFilter, churchRoleFilter },
+        data,
+      });
       if (selectedSection === "registrations") {
         setRegistrations(data.registrations);
         setRegistrationPagination(data.pagination);
@@ -285,7 +312,24 @@ export default function AdminDashboard() {
     } catch (requestError) {
       if (signal?.aborted) return;
       console.error(`Admin ${selectedSection} load failed:`, requestError);
-      setError(requestError.message || "Impossible de charger les données.");
+      const cached = readCache(ADMIN_DATA_KEY);
+      if (
+        cached?.section === selectedSection
+        && cached.page === page
+        && cached.data
+      ) {
+        setSummary(cached.data.summary);
+        if (selectedSection === "registrations") {
+          setRegistrations(cached.data.registrations);
+          setRegistrationPagination(cached.data.pagination);
+        } else {
+          setDonations(cached.data.donations);
+          setDonationPagination(cached.data.pagination);
+        }
+        setNotice("Mode hors connexion : dernières données synchronisées affichées.");
+      } else {
+        setError("Connexion indisponible et aucune donnée synchronisée.");
+      }
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -308,7 +352,9 @@ export default function AdminDashboard() {
     setError("");
     setSection("registrations");
     setRegistrationPage(1);
-    setSession({ token, admin });
+    const nextSession = { token, admin };
+    writeCache(ADMIN_SESSION_KEY, nextSession);
+    setSession(nextSession);
   };
 
   const exportRegistrations = async (format) => {
