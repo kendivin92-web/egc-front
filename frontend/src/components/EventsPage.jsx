@@ -1,21 +1,42 @@
-import { useState , useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
+import { API_URL } from "../services/apiConfig.js";
+import churchImage from "../assets/egc-worship.jpg";
+import imageLocal from "../assets/1234.jpg";
 
-//pour les envenement
-  const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API = API_URL;
+const DEFAULT_EVENTS = [
+  {
+    id: "local-sunday-service",
+    type: "Culte",
+    title: "Culte du dimanche",
+    contenu: "ÉGLISE GLORIEUSE DU CHRIST",
+    lieu: "Église",
+    freq: "09:00",
+    image: churchImage,
+  },
+  {
+    id: "local-worship",
+    type: "Culte",
+    title: "Ensemble dans la louange",
+    contenu: "VIE DE L’ÉGLISE",
+    lieu: "Église",
+    freq: "Chaque dimanche à 09:00",
+    image: imageLocal,
+  },
+];
 
 export default function EventsPage({ dark }) {
 const location = useLocation();
-const [EVENTS,setEVENTS] = useState(() => {
+const [EVENTS] = useState(() => {
   try {
     const cached = JSON.parse(localStorage.getItem("annonces") || "[]");
-    return Array.isArray(cached) ? cached : [];
+    return Array.isArray(cached) && cached.length > 0 ? cached : DEFAULT_EVENTS;
   } catch (error) {
     console.error("Unable to read cached church announcements:", error);
-    return [];
+    return DEFAULT_EVENTS;
   }
 });
-const [eventsUnavailable, setEventsUnavailable] = useState(false);
 const C = {
   bg: dark ? "#1c1c1e" : "#f5f5f7",
   card: dark ? "#242426" : "#ffffff",
@@ -26,43 +47,6 @@ const C = {
   textSub: dark ? "#a1a1a6" : "#6e6e73",
   border: dark ? "#38383a" : "#d2d2d7",
 };
-   // Récupérer les annonces depuis le serveur
-    useEffect(() => {
-      const fetchFideles = async () => {
-        try {
-          const res = await fetch(`${API}/api/annonces`, {
-          });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          
-          const data = await res.json();
-          if (!Array.isArray(data)) throw new Error("Réponse d’annonces invalide.");
-          setEVENTS(data);
-          localStorage.setItem("annonces", JSON.stringify(data));
-          setEventsUnavailable(false);
-         
-        } catch (error) {
-          console.error("Unable to load church announcements:", error);
-          setEventsUnavailable(EVENTS.length === 0);
-         
-        } 
-      };
-      fetchFideles();
-    }, [EVENTS.length]);
-  
- /* const EVENTS = [
-  
-  { id: 1, type: "culte",  title: "Culte du dimanche", freq: "Hebdomadaire", date: "2026-05-10", lieu: "10 maison", contenu: "venez vivre une presence divine avec nous", img: API+"/uploads/1778046247872.png" },
-  
-  { id: 2, type: "formation", emoji: "📚", title: "Étude Biblique", freq: "Hebdomadaire", date: "Vendredi soir", lieu: "Salle d'étude", contenu: "Exploration approfondie des Écritures avec discussion interactive et application pratique pour la vie quotidienne.", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=700&q=80" },
-  
-  { id: 3, type: "priere", emoji: "🙌", title: "Réunion de Prière", freq: "Hebdomadaire", date: "Mardi 19h00", lieu: "Sanctuaire", contenu: "Intercession collective pour la nation, l'église, les familles et les besoins personnels des membres.", img: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=700&q=80" },
-  
-  // ... ajoute tous les autres événements ici
-  
-];*/
-  
-
-  
 const CATEGORIES = [
   
   { key: "tous", label: "Tous", emoji: "🔮" },
@@ -195,9 +179,7 @@ const CATEGORIES = [
   
             <p className="font-display text-2xl text-stone-400">
   
-              {eventsUnavailable
-                ? "Les événements ne sont pas disponibles pour le moment. Réessayez plus tard."
-                : "Aucun événement dans cette catégorie"}
+              Aucun événement dans cette catégorie
   
             </p>
   
@@ -231,7 +213,9 @@ const CATEGORIES = [
   
                   {event.image && (
                     <img
-                      src={`${API}${event.image}`}
+                      src={event.image?.startsWith("http") || event.image?.includes("/assets/")
+                        ? event.image
+                        : `${API}/${event.image?.replace(/^\/+/, "")}`}
                       alt={event.title}
                       className="w-full h-full object-cover card-img"
                     />
@@ -301,7 +285,9 @@ const CATEGORIES = [
   
               {selectedEvent.image && (
                 <img
-                  src={`${API}${selectedEvent.image}`}
+                  src={selectedEvent.image?.startsWith("http") || selectedEvent.image?.includes("/assets/")
+                    ? selectedEvent.image
+                    : `${API}/${selectedEvent.image?.replace(/^\/+/, "")}`}
                   alt={selectedEvent.title}
                   className="w-full h-full object-cover"
                 />

@@ -30,7 +30,8 @@ import {
 } from "./components/carouselSlides";
 import { FEATURES, NAV_ITEMS } from "./components/homeConfig";
 import Footer from "./components/Footer";
-const URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+import { API_URL } from "./services/apiConfig.js";
+const URL = API_URL;
 import imageLocal from "./assets/1234.jpg";
 import churchImage from "./assets/egc-worship.jpg";
 const EVENTS_LOCAL = [

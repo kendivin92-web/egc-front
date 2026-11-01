@@ -1,6 +1,7 @@
 // src/screens/FormationScreen.jsx
 import { useRef, useState } from "react";
-const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
+import { API_URL } from "../services/apiConfig.js";
+const API = API_URL;
 
 // ── Icône Formation ──────────────────────────────────────────
 const FormationIcon = () => (

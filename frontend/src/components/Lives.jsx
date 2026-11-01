@@ -1,131 +1,51 @@
-import { useCallback, useEffect, useState } from "react";
-import { API_URL } from "../services/apiConfig.js";
-
-const API = API_URL;
+import { useState } from "react";
 const VIDEOS_CACHE_KEY = "egc-live-videos";
+const LIVE_CACHE_KEY = "egc-live-status";
 const DEFAULT_CHANNEL_URL = "https://youtube.com/@egliseglorieuseduchrist";
+const DEFAULT_LIVE_VIDEO_ID = import.meta.env.VITE_YOUTUBE_VIDEO_ID || "";
+
+function readCache(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "null");
+    return value ?? fallback;
+  } catch (error) {
+    console.error(`Unable to read ${key} cache:`, error);
+    return fallback;
+  }
+}
 
 export const Lives = ({ dark }) => {
-  const [live, setLive] = useState(null);
-  const [liveLoading, setLiveLoading] = useState(true);
-  const [videos, setVideos] = useState(() => {
-    try {
-      const cached = JSON.parse(localStorage.getItem(VIDEOS_CACHE_KEY) || "[]");
-      return Array.isArray(cached) ? cached : [];
-    } catch (error) {
-      console.error("Unable to read cached live videos:", error);
-      return [];
-    }
+  const cachedLive = readCache(LIVE_CACHE_KEY, null);
+  const [live] = useState(
+    cachedLive || (DEFAULT_LIVE_VIDEO_ID
+      ? { actif: true, videoId: DEFAULT_LIVE_VIDEO_ID }
+      : { actif: false, url: DEFAULT_CHANNEL_URL }),
+  );
+  const [videos] = useState(() => {
+    const cached = readCache(VIDEOS_CACHE_KEY, []);
+    return Array.isArray(cached) ? cached : [];
   });
   const [selectedVideo, setSelectedVideo] = useState(null);
-  const [videosLoading, setVideosLoading] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(VIDEOS_CACHE_KEY) || "[]").length === 0;
-    } catch {
-      return true;
-    }
-  });
-  const [videosError, setVideosError] = useState("");
-
-  const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
-  const CHANNEL_ID = import.meta.env.VITE_YOUTUBE_CHANNEL_ID;
-  const CHANNEL_URL = import.meta.env.VITE_YOUTUBE_CHANNEL_URL || DEFAULT_CHANNEL_URL;
-
-  const verifierDirect = useCallback(async () => {
-    try {
-      if (!API_KEY || !CHANNEL_ID) {
-        setLive({ actif: false, url: CHANNEL_URL });
-        return;
-      }
-      const url =
-        `https://www.googleapis.com/youtube/v3/search` +
-        `?part=snippet` +
-        `&channelId=${CHANNEL_ID}` +
-        `&eventType=live` +
-        `&type=video` +
-        `&key=${API_KEY}`;
-
-
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`YouTube API HTTP ${response.status}`);
-      const data = await response.json();
-      if (data.items && data.items.length > 0) {
-        const videoId = data.items[0].id.videoId;
-        setLive({
-          actif: true,
-          url: `https://youtube.com/watch?v=${videoId}`,
-        });
-      } else {
-        setLive({ actif: false, url: CHANNEL_URL });
-      }
-    } catch (error) {
-      console.error("Unable to check the church YouTube live stream:", error);
-      setLive({ actif: false, url: CHANNEL_URL });
-    } finally {
-      setLiveLoading(false);
-    }
-  }, [API_KEY, CHANNEL_ID, CHANNEL_URL]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadSundayVideos = async () => {
-      setVideosLoading(true);
-      setVideosError("");
+  const liveVideoId = live?.videoId || (live?.url
+    ? (() => {
       try {
-        if (!API) {
-          throw new Error(
-            "L’adresse du serveur n’est pas configurée. Définissez VITE_API_URL, puis reconstruisez l’application Android.",
-          );
-        }
-        const response = await fetch(`${API}/api/videos`);
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.message || "Impossible de charger les prédications.");
-        }
-        if (!Array.isArray(data)) throw new Error("Réponse des vidéos invalide.");
-        if (!cancelled) {
-          setVideos(data);
-          setSelectedVideo((current) => current ?? data[0] ?? null);
-          localStorage.setItem(VIDEOS_CACHE_KEY, JSON.stringify(data));
-        }
+        return new URL(live.url).searchParams.get("v");
       } catch (error) {
-        console.error("Unable to load Sunday sermons:", error);
-        if (!cancelled) {
-          const cached = (() => {
-            try {
-              return JSON.parse(localStorage.getItem(VIDEOS_CACHE_KEY) || "[]");
-            } catch {
-              return [];
-            }
-          })();
-          if (Array.isArray(cached) && cached.length > 0) {
-            setVideos(cached);
-            setSelectedVideo((current) => current ?? cached[0]);
-            setVideosError("Mode hors connexion : dernières prédications affichées.");
-          } else {
-            setVideosError("Les prédications sont momentanément indisponibles.");
-          }
-        }
-      } finally {
-        if (!cancelled) setVideosLoading(false);
+        console.error("Invalid cached live URL:", error);
+        return null;
       }
-    };
-    loadSundayVideos();
-    const initialCheck = setTimeout(verifierDirect, 0);
-    const timer = setInterval(verifierDirect, 300000);
-    return () => {
-      cancelled = true;
-      clearTimeout(initialCheck);
-      clearInterval(timer);
-    };
-  }, [verifierDirect]);
-
-  const liveVideoId = live?.actif && live.url
-    ? new URL(live.url).searchParams.get("v")
-    : null;
+    })()
+    : null);
+  const liveIsActive = Boolean(live?.actif && liveVideoId);
   const displayedVideo = liveVideoId
     ? { id: liveVideoId, title: "Direct de l’église" }
-    : selectedVideo;
+    : selectedVideo || videos[0] || null;
+
+  const liveLoading = false;
+  const videosLoading = false;
+  const videosError = videos.length === 0
+    ? "Aucune prédication enregistrée sur cet appareil."
+    : "Mode hors connexion : dernières prédications affichées.";
   const formatDate = (value) => {
     const date = new Date(value);
     return Number.isNaN(date.getTime())
@@ -158,12 +78,27 @@ export const Lives = ({ dark }) => {
 
       {liveLoading ? (
         <p>Recherche du direct…</p>
-      ) : live?.actif ? (
+      ) : liveIsActive ? (
         <p style={{ color: "#b42318", fontWeight: 700 }}>🔴 Direct en cours</p>
       ) : (
         <p style={{ color: dark ? "#a1a1a6" : "#6e6e73" }}>
           Aucun direct n’est en cours pour le moment.
         </p>
+      )}
+
+      {!displayedVideo && (
+        <a
+          href={live?.url || DEFAULT_CHANNEL_URL}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            color: dark ? "#e5c978" : "#173b70",
+            fontWeight: 700,
+            marginTop: 8,
+          }}
+        >
+          Ouvrir la chaîne YouTube
+        </a>
       )}
 
       {displayedVideo && (

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import * as XLSX from "xlsx";
-const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
+import { API_URL } from "../services/apiConfig.js";
+const API = API_URL;
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 // ─────────────────────────────────────────────
 // THÈME  (clair par défaut, sombre en option)
