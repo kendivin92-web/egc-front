@@ -125,6 +125,7 @@ export default function EgliseFoiVictoire() {
   const [slide, setSlide] = useState(0);
   const [navVisible, setNavVisible] = useState(true);
   const [activeFeature, setActiveFeature] = useState(null);
+  const [futureVersionsOpen, setFutureVersionsOpen] = useState(false);
   const lastScrollY = useRef(0);
   const scrollRef = useRef(null);
   const touchStartX = useRef(null);
@@ -377,14 +378,29 @@ useEffect(() => {
       </section>
 
       <section className="home-section">
-        <div className="home-section-heading">
+        <button
+          type="button"
+          className="home-section-heading"
+          aria-expanded={futureVersionsOpen}
+          aria-controls="future-versions-list"
+          onClick={() => setFutureVersionsOpen((open) => !open)}
+          style={{
+            width: "100%",
+            border: 0,
+            padding: 0,
+            background: "transparent",
+            color: "inherit",
+            textAlign: "left",
+            cursor: "pointer",
+          }}
+        >
           <div>
             <span className="home-eyebrow">À VENIR</span>
             <h2>Nos futures versions</h2>
           </div>
           <span className="home-section-count">{String(FUTURE_FEATURES.length).padStart(2, "0")}</span>
-        </div>
-        <div className="home-feature-grid">
+        </button>
+        {futureVersionsOpen && <div id="future-versions-list" className="home-feature-grid">
           {FUTURE_FEATURES.map((feature) => {
             const active = activeFeature === feature.id;
             return (
@@ -411,7 +427,7 @@ useEffect(() => {
               </button>
             );
           })}
-        </div>
+        </div>}
       </section>
 
       <section className="home-section home-news">
