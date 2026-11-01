@@ -182,59 +182,64 @@ export const Lives = ({ dark }) => {
         </h3>
         {videosLoading ? (
           <p>Chargement des prédications…</p>
-        ) : videosError ? (
-          <p role="alert" style={{ color: dark ? "#f0b4ad" : "#983e37" }}>{videosError}</p>
         ) : videos.length === 0 ? (
           <p style={{ color: dark ? "#a1a1a6" : "#6e6e73" }}>
             Aucune prédication récente n’a été trouvée.
           </p>
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))",
-              gap: 12,
-              textAlign: "left",
-            }}
-          >
-            {videos.map((video, index) => {
-              const active = !liveVideoId && selectedVideo?.id === video.id;
-              const sundayLabel = getSundayLabel(video, index);
-              return (
-                <button
-                  key={video.id}
-                  type="button"
-                  onClick={() => setSelectedVideo(video)}
-                  aria-pressed={active}
-                  style={{
-                    padding: 8,
-                    border: `2px solid ${active ? "#c9a84c" : "transparent"}`,
-                    borderRadius: 12,
-                    background: dark ? "#242426" : "#fff",
-                    color: dark ? "#f0e6c8" : "#173b70",
-                    textAlign: "left",
-                    cursor: "pointer",
-                  }}
-                >
-                  <img
-                    src={`https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`}
-                    alt=""
-                    loading="lazy"
-                    style={{ width: "100%", borderRadius: 8 }}
-                  />
-                  <strong style={{ display: "block", marginTop: 7 }}>{sundayLabel}</strong>
-                  <span style={{ display: "block", marginTop: 5, fontSize: 13 }}>
-                    {video.title}
-                  </span>
-                  {formatDate(video.date) && (
-                    <span style={{ display: "block", marginTop: 5, fontSize: 12, opacity: 0.75 }}>
-                      {formatDate(video.date)}
+          <>
+            {videosError && (
+              <p role="alert" style={{ color: dark ? "#f0b4ad" : "#983e37" }}>
+                {videosError}
+              </p>
+            )}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 190px), 1fr))",
+                gap: 12,
+                textAlign: "left",
+              }}
+            >
+              {videos.map((video, index) => {
+                const active = !liveVideoId && selectedVideo?.id === video.id;
+                const sundayLabel = getSundayLabel(video, index);
+                return (
+                  <button
+                    key={video.id}
+                    type="button"
+                    onClick={() => setSelectedVideo(video)}
+                    aria-pressed={active}
+                    style={{
+                      padding: 8,
+                      border: `2px solid ${active ? "#c9a84c" : "transparent"}`,
+                      borderRadius: 12,
+                      background: dark ? "#242426" : "#fff",
+                      color: dark ? "#f0e6c8" : "#173b70",
+                      textAlign: "left",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <img
+                      src={`https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`}
+                      alt=""
+                      loading="lazy"
+                      style={{ width: "100%", borderRadius: 8 }}
+                    />
+                    <strong style={{ display: "block", marginTop: 7 }}>{sundayLabel}</strong>
+                    <span style={{ display: "block", marginTop: 5, fontSize: 13 }}>
+                      {video.title}
                     </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                    {formatDate(video.date) && (
+                      <span style={{ display: "block", marginTop: 5, fontSize: 12, opacity: 0.75 }}>
+                        {formatDate(video.date)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
       </section>
     </div>
