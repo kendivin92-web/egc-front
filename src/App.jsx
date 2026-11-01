@@ -28,11 +28,39 @@ import {
   Icon,
   ProfileScreen, BibleScreen,
 } from "./components/carouselSlides";
-import { FEATURES, NAV_ITEMS } from "./components/homeConfig";
+import { FEATURES, FUTURE_FEATURES, NAV_ITEMS } from "./components/homeConfig";
 import Footer from "./components/Footer";
 import { API_URL as URL } from "./services/apiConfig";
 import imageLocal from "./assets/1234.jpg";
 import churchImage from "./assets/egc-worship.jpg";
+
+const COMING_SOON_MESSAGE = "Cette rubrique sera bientôt disponible dans les prochaines versions.";
+
+function ComingSoonScreen({ dark }) {
+  return (
+    <div
+      role="status"
+      style={{
+        minHeight: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "32px 20px",
+        textAlign: "center",
+        color: dark ? "#f5e6b8" : "#1a2744",
+      }}
+    >
+      <div style={{ maxWidth: 420 }}>
+        <div aria-hidden="true" style={{ fontSize: 56, marginBottom: 18 }}>🙏</div>
+        <h1 style={{ margin: "0 0 12px", fontSize: 25 }}>Bientôt disponible</h1>
+        <p style={{ margin: 0, lineHeight: 1.6, color: dark ? "#b9c5d8" : "#68738a" }}>
+          {COMING_SOON_MESSAGE}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 const EVENTS_LOCAL = [
   {
     id: 1,
@@ -361,6 +389,44 @@ useEffect(() => {
         </div>
       </section>
 
+      <section className="home-section">
+        <div className="home-section-heading">
+          <div>
+            <span className="home-eyebrow">À VENIR</span>
+            <h2>Nos futures versions</h2>
+          </div>
+          <span className="home-section-count">{String(FUTURE_FEATURES.length).padStart(2, "0")}</span>
+        </div>
+        <div className="home-feature-grid">
+          {FUTURE_FEATURES.map((feature) => {
+            const active = activeFeature === feature.id;
+            return (
+              <button
+                key={feature.id}
+                type="button"
+                className={`home-feature${active ? " is-active" : ""}`}
+                onClick={() => {
+                  setActiveFeature(feature.id);
+                  navigate(feature.path);
+                }}
+              >
+                <span className="home-feature-icon">
+                  <Icon
+                    name={feature.icon}
+                    size={21}
+                    color={active ? "#fff" : dark ? "#a8c9f4" : C.primary}
+                  />
+                </span>
+                <span className="home-feature-label">{feature.label}</span>
+                <span className="home-feature-arrow" aria-hidden="true">
+                  <Icon name="chevronRight" size={15} color={active ? "#fff" : C.textSub} />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="home-section home-news">
         <div className="home-section-heading">
           <div>
@@ -502,17 +568,22 @@ useEffect(() => {
         <Routes>
           <Route path="/"        element={renderHome()} />
           <Route path="/bible"   element={<BibleScreen dark={dark} />} />
-          <Route path="/give"    element={<GiveScreen dark={dark} />} />
+          {/* Ancienne fonctionnalité conservée : <Route path="/give" element={<GiveScreen dark={dark} />} /> */}
+          <Route path="/give"    element={<ComingSoonScreen dark={dark} />} />
           <Route path="/profile" element={<ProfileScreen dark={dark} />} />
           <Route path="/events" element={<EventsPage dark={dark} />} />
-          <Route path="/inscription" element={<Inscription dark={dark} />} />
+          {/* Ancienne fonctionnalité conservée : <Route path="/inscription" element={<Inscription dark={dark} />} /> */}
+          <Route path="/inscription" element={<ComingSoonScreen dark={dark} />} />
           <Route path="/connexion" element={<Navigate to="/admin" replace />} />
-          <Route path="/formations" element={<Formations dark={dark} />} />
+          {/* Ancienne fonctionnalité conservée : <Route path="/formations" element={<Formations dark={dark} />} /> */}
+          <Route path="/formations" element={<ComingSoonScreen dark={dark} />} />
           <Route path="/live" element={<Lives dark={dark} />} />
-          <Route path="/prayer" element={<Prayer dark={dark} />} />
+          {/* Ancienne fonctionnalité conservée : <Route path="/prayer" element={<Prayer dark={dark} />} /> */}
+          <Route path="/prayer" element={<ComingSoonScreen dark={dark} />} />
           <Route path="/LectureBible" element={<LectureBible dark={dark} />} />
           <Route path="/about" element={<About dark={dark} />} />
-          <Route path="/testimony" element={<Testimony dark={dark} />} />
+          {/* Ancienne fonctionnalité conservée : <Route path="/testimony" element={<Testimony dark={dark} />} /> */}
+          <Route path="/testimony" element={<ComingSoonScreen dark={dark} />} />
           <Route path="/PlanDeLecture" element={<Plandelecture dark={dark} />} />
           <Route path="/plan-lecture-personnalise" element={<PersonalizedReadingPlan dark={dark} />} />
           <Route path="/Historique" element={<Historique dark={dark} />} />
