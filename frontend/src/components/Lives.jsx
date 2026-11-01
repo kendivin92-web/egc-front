@@ -178,7 +178,7 @@ export const Lives = ({ dark }) => {
               src={`https://www.youtube.com/embed/${displayedVideo.id}?playsinline=1&rel=0&origin=${encodeURIComponent(window.location.origin)}`}
               title={displayedVideo.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              referrerPolicy="unsafe-url"
+              referrerPolicy="strict-origin-when-cross-origin"
               loading="eager"
               allowFullScreen
               style={{
