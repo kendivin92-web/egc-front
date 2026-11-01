@@ -189,8 +189,10 @@ export default function Footer({ dark }) {
 
               {/* TikTok */}
               <a
-                href="#"
-                aria-label="TikTok"
+                href="https://www.tiktok.com/@egc_tv?_r=1&_t=ZS-9B2tMT6OxXg"
+                aria-label="TikTok EGC TV"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={socialStyle}
               >
                 <FaTiktok size={19} />
