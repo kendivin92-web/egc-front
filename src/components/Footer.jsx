@@ -200,8 +200,10 @@ export default function Footer({ dark }) {
 
               {/* YouTube */}
               <a
-                href="#"
-                aria-label="YouTube"
+                href="https://www.youtube.com/@egliseglorieuseduchrist"
+                aria-label="YouTube EGC TV"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={socialStyle}
               >
                 <FaYoutube size={20} />
