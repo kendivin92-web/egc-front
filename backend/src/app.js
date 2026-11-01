@@ -13,6 +13,7 @@ import { openDatabase } from "./db.js";
 import { parseChannelVideos, parseSundayVideos } from "./youtube.js";
 
 const DEFAULT_YOUTUBE_CHANNEL_ID = "UCQi00Q-CJ5mGtbeMnrlqc4Q";
+const FALLBACK_VIDEO_IDS = ["-L5muQwfe28", "5e6qmOq2spA", "_SN_Nf5rjBg", "MHBnX57oivs"];
 
 const registrationAnswerSchema = z.record(
   z.string().min(1).max(60),
@@ -453,9 +454,15 @@ export function createApp({
       response.json(videos);
     } catch (error) {
       console.error("Unable to load Sunday videos from YouTube:", error.message);
-      response.status(502).json({
-        message: "Les vidéos YouTube sont momentanément indisponibles. Réessayez plus tard.",
-      });
+      const videos = FALLBACK_VIDEO_IDS.map((id) => ({
+        id,
+        title: "Prédication de l’église",
+        published: null,
+        date: null,
+      }));
+      sundayVideosCache = { expiresAt: Date.now() + 5 * 60 * 1000, videos };
+      response.set("Cache-Control", "public, max-age=300");
+      response.json(videos);
     }
   });
 
