@@ -103,26 +103,6 @@ export const Lives = ({ dark }) => {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch(`${API_URL}/api/live`)
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok || typeof data !== "object") {
-          throw new Error(data?.message || "Réponse du direct invalide.");
-        }
-        if (!cancelled) setLive(data);
-      })
-      .catch((error) => {
-        console.error("Impossible de vérifier le direct YouTube :", error);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
     <div
       style={{
