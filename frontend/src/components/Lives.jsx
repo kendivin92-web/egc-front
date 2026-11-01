@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { API_URL } from "../services/apiConfig.js";
 const VIDEOS_CACHE_KEY = "egc-live-videos";
 const LIVE_CACHE_KEY = "egc-live-status";
 const DEFAULT_CHANNEL_URL = "https://youtube.com/@egliseglorieuseduchrist";
@@ -21,11 +22,13 @@ export const Lives = ({ dark }) => {
       ? { actif: true, videoId: DEFAULT_LIVE_VIDEO_ID }
       : { actif: false, url: DEFAULT_CHANNEL_URL }),
   );
-  const [videos] = useState(() => {
+  const [videos, setVideos] = useState(() => {
     const cached = readCache(VIDEOS_CACHE_KEY, []);
     return Array.isArray(cached) ? cached : [];
   });
   const [selectedVideo, setSelectedVideo] = useState(null);
+  const [videosLoading, setVideosLoading] = useState(() => videos.length === 0);
+  const [videosError, setVideosError] = useState("");
   const liveVideoId = live?.videoId || (live?.url
     ? (() => {
       try {
@@ -42,16 +45,48 @@ export const Lives = ({ dark }) => {
     : selectedVideo || videos[0] || null;
 
   const liveLoading = false;
-  const videosLoading = false;
-  const videosError = videos.length === 0
-    ? "Aucune prédication enregistrée sur cet appareil."
-    : "Mode hors connexion : dernières prédications affichées.";
   const formatDate = (value) => {
     const date = new Date(value);
     return Number.isNaN(date.getTime())
       ? ""
       : new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(date);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadVideos = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/videos`);
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data)) {
+          throw new Error(data?.message || "Réponse vidéo invalide.");
+        }
+        if (cancelled) return;
+        const latestVideos = data.slice(0, 4);
+        setVideos(latestVideos);
+        setSelectedVideo((current) => current || latestVideos[0] || null);
+        localStorage.setItem(VIDEOS_CACHE_KEY, JSON.stringify(latestVideos));
+        setVideosError("");
+      } catch (error) {
+        console.error("Impossible de charger les prédications du dimanche :", error);
+        if (!cancelled) {
+          setVideosError(
+            readCache(VIDEOS_CACHE_KEY, []).length > 0
+              ? "Connexion indisponible : les dernières prédications sont affichées."
+              : "Impossible de charger les prédications du dimanche.",
+          );
+        }
+      } finally {
+        if (!cancelled) setVideosLoading(false);
+      }
+    };
+
+    loadVideos();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div
@@ -127,6 +162,9 @@ export const Lives = ({ dark }) => {
         </section>
       )}
       <section style={{ width: "100%", maxWidth: 900, marginTop: 28 }}>
+        <h3 style={{ color: dark ? "#f0e6c8" : "#173b70", marginBottom: 14 }}>
+          Les 4 dernières prédications du dimanche
+        </h3>
         {videosLoading ? (
           <p>Chargement des prédications…</p>
         ) : videosError ? (
@@ -169,9 +207,11 @@ export const Lives = ({ dark }) => {
                     style={{ width: "100%", borderRadius: 8 }}
                   />
                   <strong style={{ display: "block", marginTop: 7 }}>{video.title}</strong>
-                  <span style={{ display: "block", marginTop: 5, fontSize: 12, opacity: 0.75 }}>
-                    {formatDate(video.date)}
-                  </span>
+                  {formatDate(video.date) && (
+                    <span style={{ display: "block", marginTop: 5, fontSize: 12, opacity: 0.75 }}>
+                      {formatDate(video.date)}
+                    </span>
+                  )}
                 </button>
               );
             })}

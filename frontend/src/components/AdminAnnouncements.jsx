@@ -15,6 +15,14 @@ const EMPTY_FORM = {
   published: true,
 };
 
+const FREQUENCY_OPTIONS = [
+  "Chaque dimanche",
+  "1er dimanche du mois",
+  "2e dimanche du mois",
+  "3e dimanche du mois",
+  "4e dimanche du mois",
+];
+
 async function fetchAnnouncements(token) {
   const response = await fetch(`${API}/api/admin/annonces`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -246,7 +254,18 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
           </label>
           <label>
             Fréquence ou heure
-            <input name="freq" value={form.freq} onChange={updateForm} maxLength={80} />
+            <input
+              name="freq"
+              value={form.freq}
+              onChange={updateForm}
+              maxLength={80}
+              list="announcement-frequency-options"
+            />
+            <datalist id="announcement-frequency-options">
+              {FREQUENCY_OPTIONS.map((frequency) => (
+                <option key={frequency} value={frequency} />
+              ))}
+            </datalist>
           </label>
           <label className="admin-announcement-image">
             Image (JPEG, PNG ou WebP, 5 Mo maximum)
