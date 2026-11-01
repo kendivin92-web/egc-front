@@ -1530,6 +1530,7 @@ html[data-theme="dark"] .personalized-plan-check input {
   .app-scroll {
     padding-right: 24px !important;
     padding-left: 24px !important;
+    padding-bottom: 100px !important;
   }
 
   .app-bottom-nav {
