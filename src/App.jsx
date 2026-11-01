@@ -251,7 +251,7 @@ useEffect(() => {
   const visibleSlides = carouselSlides.slice(-4);
   const renderHome = () => (
     <div className="home-dashboard">
-      <section className="home-welcome">
+      <section className="home-welcome" aria-label="Bienvenue">
         <span className="home-eyebrow">UNE COMMUNAUTÉ DE FOI</span>
         <h1>Bienvenue chez vous</h1>
         <p>Croître jusqu’à manifester Christ dans sa plénitude.</p>
