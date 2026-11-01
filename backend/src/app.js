@@ -10,7 +10,7 @@ import helmet from "helmet";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { openDatabase } from "./db.js";
-import { parseSundayVideos } from "./youtube.js";
+import { parseChannelVideos, parseSundayVideos } from "./youtube.js";
 
 const DEFAULT_YOUTUBE_CHANNEL_ID = "UCQi00Q-CJ5mGtbeMnrlqc4Q";
 
@@ -428,14 +428,26 @@ export function createApp({
       return;
     }
     try {
+      const feedUrl =
+        `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(youtubeChannelId)}`;
       const feedResponse = await fetchYouTubeFeed(
-        `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(youtubeChannelId)}`,
+        feedUrl,
         { signal: AbortSignal.timeout(8000) },
       );
-      if (!feedResponse.ok) {
-        throw new Error(`YouTube RSS HTTP ${feedResponse.status}`);
+      let videos;
+      if (feedResponse.ok) {
+        videos = parseSundayVideos(await feedResponse.text());
+      } else {
+        console.warn(`YouTube RSS HTTP ${feedResponse.status}; using channel page fallback.`);
+        const channelResponse = await fetchYouTubeFeed(
+          "https://www.youtube.com/@egliseglorieuseduchrist/videos",
+          { signal: AbortSignal.timeout(8000) },
+        );
+        if (!channelResponse.ok) {
+          throw new Error(`YouTube channel page HTTP ${channelResponse.status}`);
+        }
+        videos = parseChannelVideos(await channelResponse.text());
       }
-      const videos = parseSundayVideos(await feedResponse.text());
       sundayVideosCache = { expiresAt: Date.now() + 5 * 60 * 1000, videos };
       response.set("Cache-Control", "public, max-age=300");
       response.json(videos);

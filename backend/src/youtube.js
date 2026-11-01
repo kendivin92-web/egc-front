@@ -43,3 +43,21 @@ export function parseSundayVideos(xml, limit = 4) {
   }
   return videos;
 }
+
+export function parseChannelVideos(html, limit = 4) {
+  const videos = [];
+  const seenIds = new Set();
+  for (const match of html.matchAll(/"videoId":"([\w-]{11})"/g)) {
+    const id = match[1];
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
+    videos.push({
+      id,
+      title: "Prédication de l’église",
+      published: null,
+      date: null,
+    });
+    if (videos.length === limit) break;
+  }
+  return videos;
+}
