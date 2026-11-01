@@ -67,3 +67,10 @@ export function parseChannelVideos(html, limit = 4) {
   }
   return videos;
 }
+
+export function parseLiveVideo(html) {
+  const liveMarker = /"isLive(?:Now|Content)?":true|"badges":\[\{[^}]*"label":"LIVE"/i;
+  if (!liveMarker.test(html)) return null;
+  const match = html.match(/"videoId":"([\w-]{11})"/);
+  return match ? { actif: true, videoId: match[1] } : null;
+}

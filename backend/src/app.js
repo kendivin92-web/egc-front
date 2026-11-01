@@ -10,7 +10,7 @@ import helmet from "helmet";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { openDatabase } from "./db.js";
-import { parseChannelVideos, parseSundayVideos } from "./youtube.js";
+import { parseChannelVideos, parseLiveVideo, parseSundayVideos } from "./youtube.js";
 
 const DEFAULT_YOUTUBE_CHANNEL_ID = "UCQi00Q-CJ5mGtbeMnrlqc4Q";
 const FALLBACK_VIDEO_IDS = ["-L5muQwfe28", "5e6qmOq2spA", "_SN_Nf5rjBg", "MHBnX57oivs"];
@@ -464,6 +464,26 @@ export function createApp({
       sundayVideosCache = { expiresAt: Date.now() + 5 * 60 * 1000, videos };
       response.set("Cache-Control", "public, max-age=300");
       response.json(videos);
+    }
+  });
+
+  app.get("/api/live", async (_request, response) => {
+    try {
+      const channelResponse = await fetchYouTubeFeed(
+        "https://www.youtube.com/@egliseglorieuseduchrist/live",
+        { signal: AbortSignal.timeout(8000) },
+      );
+      if (!channelResponse.ok) throw new Error(`YouTube live page HTTP ${channelResponse.status}`);
+      response.json(parseLiveVideo(await channelResponse.text()) || {
+        actif: false,
+        url: "https://youtube.com/@egliseglorieuseduchrist/live",
+      });
+    } catch (error) {
+      console.error("Unable to load YouTube live status:", error.message);
+      response.json({
+        actif: false,
+        url: "https://youtube.com/@egliseglorieuseduchrist/live",
+      });
     }
   });
 

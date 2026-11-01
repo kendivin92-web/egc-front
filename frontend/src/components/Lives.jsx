@@ -29,7 +29,7 @@ function readCache(key, fallback) {
 
 export const Lives = ({ dark }) => {
   const cachedLive = readCache(LIVE_CACHE_KEY, null);
-  const [live] = useState(
+  const [live, setLive] = useState(
     cachedLive || (DEFAULT_LIVE_VIDEO_ID
       ? { actif: true, videoId: DEFAULT_LIVE_VIDEO_ID }
       : { actif: false, url: DEFAULT_CHANNEL_URL }),
@@ -98,6 +98,26 @@ export const Lives = ({ dark }) => {
     };
 
     loadVideos();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`${API_URL}/api/live`)
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || typeof data !== "object") {
+          throw new Error(data?.message || "Réponse du direct invalide.");
+        }
+        if (!cancelled) setLive(data);
+      })
+      .catch((error) => {
+        console.error("Impossible de vérifier le direct YouTube :", error);
+      });
+
     return () => {
       cancelled = true;
     };
