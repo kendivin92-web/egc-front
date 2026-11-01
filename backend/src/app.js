@@ -418,6 +418,7 @@ export function createApp({
       ...announcement,
       showInCarousel: Boolean(announcement.showInCarousel),
     }));
+    response.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     response.json(announcements);
   });
 
@@ -901,7 +902,7 @@ export function createApp({
       return;
     }
     if (error?.type === "entity.too.large") {
-      response.status(413).json({ message: "Le fichier dépasse la limite de 5 Mo." });
+      response.status(413).json({ message: "La requête dépasse la limite autorisée." });
       return;
     }
     if (error?.code === "SQLITE_CONSTRAINT_UNIQUE") {

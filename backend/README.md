@@ -76,6 +76,9 @@ generate its public domain.
 - Schema validation, parameterized SQL, rate limits, Helmet headers, CORS
   allowlisting, bounded JSON requests, bcrypt password hashing, and required
   request idempotency for donation intents.
+- The API applies bounded connection timeouts and public cache headers for
+  read-only announcements to reduce resource exhaustion and repeated database
+  reads.
 - Registration phone numbers accept 8–12 digits, with optional spaces,
   parentheses, dashes, and a leading `+`; the same validation is applied by
   the frontend and API.

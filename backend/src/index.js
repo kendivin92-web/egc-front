@@ -23,6 +23,9 @@ const { app } = createApp({
   youtubeChannelId: process.env.YOUTUBE_CHANNEL_ID,
 });
 
-app.listen(port, "0.0.0.0", () => {
+const server = app.listen(port, "0.0.0.0", () => {
   console.log(`EGC API listening on port ${port}`);
 });
+server.requestTimeout = 30_000;
+server.headersTimeout = 35_000;
+server.keepAliveTimeout = 5_000;

@@ -110,6 +110,14 @@ export function openDatabase(databasePath) {
     }
   }
   db.exec(`
+    CREATE INDEX IF NOT EXISTS registrations_church_status_id
+      ON registrations(church_status, id DESC);
+    CREATE INDEX IF NOT EXISTS registrations_church_role_id
+      ON registrations(church_role, id DESC);
+    CREATE INDEX IF NOT EXISTS registrations_status_church_status_role_id
+      ON registrations(status, church_status, church_role, id DESC);
+  `);
+  db.exec(`
     UPDATE registrations
     SET address = COALESCE(NULLIF(json_extract(answers_json, '$.adresse'), ''),
                            NULLIF(json_extract(answers_json, '$.address'), ''), address),
