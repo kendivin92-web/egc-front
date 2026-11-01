@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "android:sync": "npm run build && cap sync android",
+    "android:sync": "npm run build && node -e \"require('fs').rmSync('dist/app-egc.apk', { force: true })\" && cap sync android",
     "android:open": "cap open android",
     "server:dev": "npm --prefix ../backend run dev",
     "server:start": "npm --prefix ../backend start",
