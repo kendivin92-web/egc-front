@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Rapport complet EGC - état fonctionnel, bugs et statistiques</title>
+  <style>
+    @page { size: A4; margin: 16mm 15mm 18mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; color: #17233c; line-height: 1.42; font-size: 9.5pt; }
+    h1 { color: #173b70; font-size: 25pt; line-height: 1.12; margin: 0 0 10px; }
+    h2 { color: #173b70; border-bottom: 2px solid #c9a84c; padding-bottom: 4px; margin: 22px 0 9px; page-break-after: avoid; }
+    h3 { color: #315a91; margin: 13px 0 4px; page-break-after: avoid; }
+    p { margin: 6px 0; }
+    ul, ol { margin-top: 5px; }
+    li { margin: 3px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 7px 0 12px; }
+    th { background: #173b70; color: #fff; text-align: left; }
+    th, td { border: 1px solid #cbd4e0; padding: 5px 6px; vertical-align: top; }
+    tr { page-break-inside: avoid; }
+    code { background: #eef1f5; padding: 1px 3px; }
+    .cover { min-height: 245mm; display: flex; flex-direction: column; justify-content: center; page-break-after: always; }
+    .brand { color: #c9a84c; font-weight: bold; letter-spacing: 2px; }
+    .meta { color: #59677d; }
+    .box { background: #f1f5fa; border-left: 4px solid #c9a84c; padding: 9px 11px; margin: 9px 0; }
+    .ok { color: #18794e; font-weight: bold; }
+    .warn { color: #a15c00; font-weight: bold; }
+    .bad { color: #a52929; font-weight: bold; }
+    .small { font-size: 8.5pt; color: #59677d; }
+    .page-break { page-break-before: always; }
+    .severity { font-weight: bold; white-space: nowrap; }
+    .metric { font-size: 15pt; font-weight: bold; color: #173b70; }
+    .metric-label { color: #59677d; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 8px 0 12px; }
+    .card { border: 1px solid #cbd4e0; border-radius: 5px; padding: 8px; background: #fbfcfe; }
+    .source { color: #59677d; font-size: 8pt; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <div class="brand">ÉGLISE GLORIEUSE DU CHRIST</div>
+    <h1>Rapport complet de l'application EGC</h1>
+    <p class="meta">État fonctionnel, statistiques, bugs, sécurité et capacité</p>
+    <p class="meta">Établi le 1er novembre 2026</p>
+    <div class="box">
+      <strong>Périmètre :</strong> frontend React/Vite, application Android/Capacitor,
+      API Express, base SQLite, intégration YouTube, déploiement Railway et vérifications
+      effectuées sur le domaine public.
+    </div>
+    <p>
+      Ce document décrit explicitement ce qui fonctionne, ce qui est volontairement
+      désactivé, comment les données circulent, quels bugs ont été rencontrés,
+      quelles corrections ont été déployées et quelles limites restent à traiter.
+    </p>
+    <p class="small">Les statistiques de code proviennent du dépôt analysé. Les chiffres de charge de production ne sont pas inventés : aucun test de 5 000 utilisateurs simultanés n'a été exécuté sur Railway.</p>
+  </section>
+
+  <h2>1. Résumé exécutif</h2>
+  <p>
+    L'application EGC est une application web responsive et Android destinée à présenter
+    l'église, ses événements, la Bible, les prédications YouTube, les invitations et
+    l'administration des inscriptions et annonces.
+  </p>
+  <div class="box">
+    <strong>État global :</strong> <span class="ok">fonctionnel pour le périmètre actuellement activé</span>,
+    avec une réserve importante sur la montée en charge : le backend utilise encore SQLite
+    synchrone et une seule instance est recommandée.
+  </div>
+  <ul>
+    <li><span class="ok">Frontend public Railway accessible :</span> <code>https://egliseglorieuseduchrist.up.railway.app</code>.</li>
+    <li><span class="ok">API de production accessible :</span> <code>https://egc-front-production.up.railway.app</code>.</li>
+    <li><span class="ok">Tests backend :</span> 6 tests réussis sur 6, dont 2 000 inscriptions simulées.</li>
+    <li><span class="ok">Build frontend :</span> Vite réussi.</li>
+    <li><span class="ok">Sécurité de base :</span> Helmet, CORS allowlist, JWT, bcrypt, Zod, requêtes paramétrées et rate limiting.</li>
+    <li><span class="warn">Limite :</span> PostgreSQL et Redis ne sont pas encore provisionnés ; le support garanti de 5 000 utilisateurs simultanés n'est donc pas démontré.</li>
+  </ul>
+
+  <h2>2. Statistiques détaillées du projet</h2>
+  <div class="grid">
+    <div class="card"><div class="metric">37 494</div><div class="metric-label">lignes frontend source</div></div>
+    <div class="card"><div class="metric">1 060</div><div class="metric-label">lignes backend source</div></div>
+    <div class="card"><div class="metric">26</div><div class="metric-label">déclarations de routes React</div></div>
+    <div class="card"><div class="metric">17</div><div class="metric-label">routes API Express</div></div>
+  </div>
+  <table>
+    <tr><th>Élément</th><th>Valeur constatée</th><th>Interprétation</th></tr>
+    <tr><td>Framework frontend</td><td>React 19 + Vite 7</td><td>Interface en composants, bundle optimisé par Vite, chargement différé de plusieurs écrans.</td></tr>
+    <tr><td>Navigation</td><td>React Router, 26 déclarations Route</td><td>Chaque écran est accessible par une URL interne, avec retour et navigation principale.</td></tr>
+    <tr><td>Backend</td><td>Express 5 + Node 22</td><td>API HTTP JSON, authentification administrateur et règles de validation serveur.</td></tr>
+    <tr><td>Base</td><td>SQLite, journal WAL, busy timeout 5 s</td><td>Bonne solution pour une instance et un trafic modéré ; limite la montée en charge horizontale.</td></tr>
+    <tr><td>Dépendances frontend directes</td><td>22 environ</td><td>React, Capacitor, cartes, icônes, formulaires, export XLSX et état local.</td></tr>
+    <tr><td>Dépendances backend directes</td><td>7</td><td>Express, bcrypt, CORS, dotenv, rate limit, Helmet, JWT et Zod.</td></tr>
+    <tr><td>Build frontend observé</td><td>Réussi, avertissement de gros chunks</td><td>Deux bundles Bible dépassent 4,9 Mo et 6,3 Mo avant gzip : amélioration possible par découpage.</td></tr>
+  </table>
+
+  <h2>3. Architecture et circulation des données</h2>
+  <ol>
+    <li>Le navigateur charge le bundle frontend depuis le service Railway frontend.</li>
+    <li><code>frontend/src/services/apiConfig.js</code> pointe la production vers le service API dédié.</li>
+    <li>Les écrans publics lisent les annonces, vidéos et statut Live via des requêtes HTTPS.</li>
+    <li>Les annonces et les prédications sont conservées en cache local pour afficher un contenu de secours.</li>
+    <li>Les formulaires envoient du JSON au backend avec validation côté client et côté serveur.</li>
+    <li>Les opérations d'administration nécessitent un JWT de 20 minutes dans l'en-tête Authorization.</li>
+    <li>Le backend écrit les inscriptions, demandes de don et annonces dans SQLite.</li>
+    <li>YouTube fournit le flux RSS des vidéos du dimanche et la page du direct.</li>
+  </ol>
+  <table>
+    <tr><th>Service</th><th>Adresse / configuration</th><th>Rôle</th></tr>
+    <tr><td>Frontend</td><td><code>egliseglorieuseduchrist.up.railway.app</code></td><td>Application React publique, servie par Vite preview sur le port Railway.</td></tr>
+    <tr><td>API</td><td><code>egc-front-production.up.railway.app</code></td><td>Endpoints JSON, santé, annonces, vidéos, Live, inscriptions et administration.</td></tr>
+    <tr><td>Android</td><td>Capacitor</td><td>Bundle local Android ; les données distantes utilisent l'URL API de production.</td></tr>
+    <tr><td>YouTube</td><td>Chaîne EGC TV</td><td>Direct et quatre dernières vidéos dont le titre contient « dimanche ».</td></tr>
+  </table>
+
+  <h2>4. Fonctionnalités opérationnelles</h2>
+  <table>
+    <tr><th>Rubrique</th><th>Route</th><th>Fonctionnement détaillé</th><th>État</th></tr>
+    <tr><td>Accueil</td><td><code>/</code></td><td>Logo, présentation, carrousel d'actualités, verset du jour, raccourcis et vie de l'église.</td><td class="ok">OK</td></tr>
+    <tr><td>Événements</td><td><code>/events</code></td><td>Liste et détail des annonces ; les données viennent de l'API avec contenu local de secours.</td><td class="ok">OK</td></tr>
+    <tr><td>Direct</td><td><code>/live</code></td><td>Interroge l'API Live, affiche l'état du direct, le lecteur YouTube et quatre prédications du dimanche.</td><td class="ok">OK avec dépendance YouTube</td></tr>
+    <tr><td>Bible</td><td><code>/bible</code>, <code>/LectureBible</code></td><td>Lecture d'une Bible embarquée ; le contenu principal ne dépend pas de l'API.</td><td class="ok">OK</td></tr>
+    <tr><td>À propos</td><td><code>/about</code></td><td>Informations d'identité et de présentation de l'église.</td><td class="ok">OK</td></tr>
+    <tr><td>Invitation</td><td><code>/invitation</code></td><td>Message WhatsApp et lien public EGC ; téléchargement Android dans la copie frontend déployée.</td><td class="ok">OK</td></tr>
+    <tr><td>Localisation</td><td><code>/localisation</code></td><td>Carte de localisation de l'église.</td><td class="ok">OK avec dépendance carte/réseau</td></tr>
+    <tr><td>Administration</td><td><code>/admin</code></td><td>Connexion JWT, listes paginées, filtrage, annonces, uploads et exports administratifs.</td><td class="ok">Protégé et testé</td></tr>
+    <tr><td>Profil</td><td><code>/profile</code></td><td>Écran profil de l'application.</td><td class="ok">Accessible</td></tr>
+    <tr><td>Plans de lecture</td><td><code>/PlanDeLecture</code>, <code>/plan-lecture-personnalise</code></td><td>Plans bibliques locaux et personnalisation.</td><td class="ok">Accessible</td></tr>
+    <tr><td>Historique, rappels, encouragement</td><td>Routes dédiées</td><td>Modules locaux pour lecture, rappels et contenus d'encouragement.</td><td class="ok">Accessibles</td></tr>
+  </table>
+
+  <h2>5. Rubriques volontairement désactivées</h2>
+  <p>
+    Les composants d'origine sont conservés dans le code, mais les routes affichent
+    temporairement l'écran « Bientôt disponible ». Sur l'accueil, les cinq rubriques
+    sont cachées dans une section repliée « Nos futures versions » et apparaissent
+    uniquement après clic.
+  </p>
+  <table>
+    <tr><th>Rubrique</th><th>Route</th><th>Comportement actuel</th><th>Code d'origine</th></tr>
+    <tr><td>Offrandes et dîmes</td><td><code>/give</code></td><td>Message « Bientôt disponible ».</td><td>Conservé et commenté dans App.jsx.</td></tr>
+    <tr><td>Nos formations</td><td><code>/formations</code></td><td>Message « Bientôt disponible ».</td><td>Formations.jsx conservé ; le fichier tagué contient 336 lignes.</td></tr>
+    <tr><td>Demande de prière</td><td><code>/prayer</code></td><td>Message « Bientôt disponible ».</td><td>Composant et ancienne route conservés.</td></tr>
+    <tr><td>Bibliothèques</td><td><code>/testimony</code></td><td>Message « Bientôt disponible ».</td><td>Composant de témoignage conservé.</td></tr>
+    <tr><td>Inscription</td><td><code>/inscription</code></td><td>Message « Bientôt disponible ».</td><td>Formulaire d'origine conservé.</td></tr>
+  </table>
+
+  <h2>6. Live et vidéos YouTube</h2>
+  <ul>
+    <li>Le backend vérifie la page Live de la chaîne EGC TV.</li>
+    <li>Lorsqu'un direct est détecté, l'API renvoie son identifiant et l'interface affiche le lecteur.</li>
+    <li>Lorsque le direct est inactif, l'écran indique « Aucun direct n'est en cours » et affiche les prédications.</li>
+    <li>Le flux RSS est filtré par le mot « dimanche » dans le titre.</li>
+    <li>Les quatre vidéos distinctes les plus récentes sont retournées et mises en cache cinq minutes côté API.</li>
+    <li>La vidéo du 1er novembre 2026 a été vérifiée comme valide avec l'identifiant YouTube <code>UqNR2ZX3dXE</code>.</li>
+    <li>Une erreur YouTube 153 a été rencontrée dans un lecteur intégré ; la politique de référent a été corrigée vers <code>strict-origin-when-cross-origin</code>.</li>
+  </ul>
+  <div class="box"><strong>Limite :</strong> la lecture dépend des règles YouTube, de l'autorisation d'intégration, de la disponibilité de la vidéo et de la connexion de l'utilisateur.</div>
+
+  <h2>7. API et données</h2>
+  <table>
+    <tr><th>Famille</th><th>Endpoints principaux</th><th>Règles</th></tr>
+    <tr><td>Santé</td><td><code>GET /</code>, <code>GET /api/health</code></td><td>Réponse JSON de disponibilité.</td></tr>
+    <tr><td>Lecture publique</td><td><code>GET /api/annonces</code>, <code>GET /api/videos</code>, <code>GET /api/live</code></td><td>Pas d'authentification ; caches et repli explicites.</td></tr>
+    <tr><td>Écriture publique</td><td><code>POST /api/inscription</code>, <code>POST /api/formations</code>, <code>POST /api/pay</code></td><td>Validation Zod, rate limit, idempotence ; le paiement réel MTN n'est pas intégré.</td></tr>
+    <tr><td>Administration</td><td>Login, annonces, uploads, inscriptions, dons</td><td>JWT, réponses non mises en cache, pagination et contrôle de rôle.</td></tr>
+  </table>
+
+  <h2>8. Sécurité actuelle</h2>
+  <ul>
+    <li>Helmet ajoute des en-têtes HTTP de protection.</li>
+    <li>CORS limite les origines autorisées à une allowlist.</li>
+    <li>Les secrets et mots de passe doivent venir des variables Railway ; le dépôt ne doit pas contenir de secrets.</li>
+    <li>Les mots de passe sont hachés avec bcrypt.</li>
+    <li>Les JWT sont vérifiés avec l'algorithme HS256 et expirent après 20 minutes.</li>
+    <li>Zod limite les types, tailles, formats et valeurs des entrées.</li>
+    <li>Les requêtes SQL utilisent des paramètres plutôt que de concaténer les entrées.</li>
+    <li>Les limites de requêtes publiques et de connexion réduisent les abus simples.</li>
+    <li>Les délais HTTP serveur sont bornés et les annonces publiques ont un cache court.</li>
+    <li>Les uploads d'administration sont réservés au JWT et limités en taille et type.</li>
+  </ul>
+  <div class="box"><strong>Risque restant :</strong> le rate limiting est local à l'instance. Avec plusieurs instances, il faut un store Redis partagé. SQLite synchrone doit être remplacé par PostgreSQL pour une montée en charge horizontale.</div>
+
+  <h2>9. Bugs rencontrés et corrections</h2>
+  <table>
+    <tr><th>Bug</th><th>Cause</th><th>Correction</th><th>État</th></tr>
+    <tr><td>403 Vite sur le domaine public</td><td>Le domaine Railway n'était pas autorisé par le serveur preview.</td><td>Ajout de <code>preview.host</code> et <code>preview.allowedHosts</code>.</td><td class="ok">Corrigé</td></tr>
+    <tr><td>API appelée sur le mauvais domaine</td><td>Le frontend public demandait <code>/api/videos</code> au service frontend.</td><td>URL de production changée vers <code>egc-front-production.up.railway.app</code>.</td><td class="ok">Corrigé</td></tr>
+    <tr><td>Erreur YouTube 153</td><td>Référent refusé par le lecteur intégré.</td><td>Politique de référent corrigée.</td><td class="ok">Corrigé côté application</td></tr>
+    <tr><td>Anciennes vidéos vendredi/samedi</td><td>Expérimentations de filtrage et cache.</td><td>La logique Live a été restaurée à la version Railway demandée, puis le RSS filtre « dimanche ».</td><td class="ok">Corrigé selon périmètre</td></tr>
+    <tr><td>Futures rubriques trop visibles</td><td>La grille était rendue immédiatement.</td><td>Section repliable avec <code>aria-expanded</code> et ouverture au clic.</td><td class="ok">Corrigé</td></tr>
+    <tr><td>Footer invisible sur grand écran</td><td>Conteneur limité à la hauteur de la fenêtre et barre fixe recouvrant le bas.</td><td>Espace inférieur de défilement ajouté en desktop.</td><td class="ok">Corrigé</td></tr>
+    <tr><td>Liens sociaux inactifs</td><td>Les href étaient <code>#</code>.</td><td>Facebook, TikTok et YouTube EGC TV reliés aux liens fournis.</td><td class="ok">Corrigé</td></tr>
+    <tr><td>Migration ancienne base cassée après index</td><td>Index créés avant l'ajout de colonnes historiques.</td><td>Index déplacés après les migrations de colonnes.</td><td class="ok">Corrigé et testé</td></tr>
+  </table>
+
+  <h2>10. Tests et validations</h2>
+  <table>
+    <tr><th>Validation</th><th>Résultat</th><th>Détail</th></tr>
+    <tr><td>Tests backend</td><td class="ok">6/6 réussis</td><td>Idempotence, validation, sécurité, migration, vidéos, pagination et charge simulée.</td></tr>
+    <tr><td>Charge locale</td><td class="ok">2 000 inscriptions simulées</td><td>Test automatisé réussi en environ 17 secondes sur l'environnement local.</td></tr>
+    <tr><td>Build frontend</td><td class="ok">Réussi</td><td>Vite 7.3.7 produit le bundle web.</td></tr>
+    <tr><td>API Railway</td><td class="ok">HTTP 200</td><td><code>/api/health</code> répond <code>{"status":"ok"}</code>.</td></tr>
+    <tr><td>Test public frontend</td><td class="ok">Réussi</td><td>Accueil, Live, Invitation et section repliable vérifiés dans le navigateur.</td></tr>
+    <tr><td>Charge réelle 5 000 utilisateurs</td><td class="warn">Non mesurée</td><td>Le test local ne constitue pas une garantie de capacité Railway.</td></tr>
+  </table>
+
+  <h2>11. Limites et bugs encore ouverts</h2>
+  <ol>
+    <li><strong>Scalabilité :</strong> SQLite synchrone peut bloquer la boucle Node lors d'écritures concurrentes.</li>
+    <li><strong>Rate limiting distribué :</strong> les compteurs ne sont pas partagés entre plusieurs instances.</li>
+    <li><strong>Pagination :</strong> l'administration utilise encore OFFSET, moins efficace sur de très grandes pages.</li>
+    <li><strong>Chunks frontend :</strong> les données bibliques produisent de gros bundles ; le premier chargement peut être lent sur mobile.</li>
+    <li><strong>Paiement :</strong> <code>/api/pay</code> enregistre une intention ; il ne déclenche pas encore de paiement MTN réel ni de webhook signé.</li>
+    <li><strong>Live :</strong> si la page reste ouverte avant le début d'un direct, un rechargement est nécessaire pour obtenir le nouveau statut avec la logique actuelle.</li>
+    <li><strong>Observabilité :</strong> aucun tableau de bord p95/p99, tracing ou test de charge Railway automatisé n'est fourni dans le dépôt.</li>
+  </ol>
+
+  <h2>12. Plan recommandé pour dépasser 5 000 utilisateurs</h2>
+  <table>
+    <tr><th>Priorité</th><th>Action</th><th>Résultat attendu</th></tr>
+    <tr><td>1</td><td>Provisionner PostgreSQL Railway et migrer les tables SQLite avec scripts de migration et sauvegarde.</td><td>Écritures concurrentes non bloquantes, réplication et montée en charge.</td></tr>
+    <tr><td>2</td><td>Remplacer le rate limit mémoire par Redis partagé.</td><td>Limites cohérentes entre toutes les instances.</td></tr>
+    <tr><td>3</td><td>Ajouter un pool de connexions et des index validés par EXPLAIN.</td><td>Latence et débit plus prévisibles.</td></tr>
+    <tr><td>4</td><td>Mettre en place un test k6/autocannon avec 5 000 clients virtuels.</td><td>Mesure objective du débit, p95, p99 et taux d'erreur.</td></tr>
+    <tr><td>5</td><td>Découper la Bible en chargement différé et mettre les assets derrière CDN.</td><td>Premier affichage plus rapide, surtout sur mobile.</td></tr>
+    <tr><td>6</td><td>Ajouter logs structurés, alertes, sauvegardes chiffrées et suivi de santé.</td><td>Détection rapide des incidents et restauration contrôlée.</td></tr>
+  </table>
+
+  <h2>13. Conclusion</h2>
+  <p>
+    Le périmètre public actuellement activé est fonctionnel et les corrections demandées
+    ont été déployées. Les cinq rubriques futures sont masquées puis accessibles au clic,
+    sans suppression du code initial. Les liens sociaux et l'invitation pointent vers les
+    adresses demandées. Le Live est relié à l'API et à YouTube.
+  </p>
+  <p>
+    La prochaine étape technique indispensable pour une promesse solide de plus de 5 000
+    utilisateurs est une migration PostgreSQL + Redis accompagnée d'un test de charge
+    en environnement Railway. Jusqu'à cette étape, l'application doit être considérée
+    comme robuste pour une instance et un trafic modéré, mais non comme une architecture
+    multi-instance pleinement validée.
+  </p>
+  <p class="source">Sources : dépôt EGC analysé, tests backend, builds Vite, réponses API Railway et vérifications navigateur effectuées au 1er novembre 2026.</p>
+</body>
+</html>
