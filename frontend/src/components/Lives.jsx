@@ -4,6 +4,12 @@ const VIDEOS_CACHE_KEY = "egc-live-videos";
 const LIVE_CACHE_KEY = "egc-live-status";
 const DEFAULT_CHANNEL_URL = "https://youtube.com/@egliseglorieuseduchrist";
 const DEFAULT_LIVE_VIDEO_ID = import.meta.env.VITE_YOUTUBE_VIDEO_ID || "";
+const FALLBACK_VIDEOS = [
+  { id: "-L5muQwfe28", title: "Prédication du dimanche 1" },
+  { id: "5e6qmOq2spA", title: "Prédication du dimanche 2" },
+  { id: "_SN_Nf5rjBg", title: "Prédication du dimanche 3" },
+  { id: "MHBnX57oivs", title: "Prédication du dimanche 4" },
+];
 
 function readCache(key, fallback) {
   try {
@@ -24,7 +30,7 @@ export const Lives = ({ dark }) => {
   );
   const [videos, setVideos] = useState(() => {
     const cached = readCache(VIDEOS_CACHE_KEY, []);
-    return Array.isArray(cached) ? cached : [];
+    return Array.isArray(cached) && cached.length > 0 ? cached : FALLBACK_VIDEOS;
   });
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [videosLoading, setVideosLoading] = useState(() => videos.length === 0);
@@ -72,9 +78,7 @@ export const Lives = ({ dark }) => {
         console.error("Impossible de charger les prédications du dimanche :", error);
         if (!cancelled) {
           setVideosError(
-            readCache(VIDEOS_CACHE_KEY, []).length > 0
-              ? "Connexion indisponible : les dernières prédications sont affichées."
-              : "Impossible de charger les prédications du dimanche.",
+            "Connexion indisponible : les quatre dernières prédications sont affichées.",
           );
         }
       } finally {
