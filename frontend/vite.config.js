@@ -35,6 +35,10 @@ export default defineConfig(({ mode }) => {
         ignored: ['**/android/**'],
       },
     },
+    preview: {
+      host: '0.0.0.0',
+      allowedHosts: ['egliseglorieuseduchrist.up.railway.app'],
+    },
     plugins: [react(),tailwindcss()],
   }
 })
