@@ -260,15 +260,6 @@ useEffect(() => {
         <span className="home-eyebrow">UNE COMMUNAUTÉ DE FOI</span>
         <h1>Bienvenue chez vous</h1>
         <p>Croître jusqu’à manifester Christ dans sa plénitude.</p>
-        {!Capacitor.isNativePlatform() && (
-          <a
-            className="home-download-cta"
-            href="https://github.com/kendivin92-web/egc-front/raw/main/frontend/public/app-egc.apk"
-            download="EGC.apk"
-          >
-            Télécharger l’application Android
-          </a>
-        )}
       </section>
 
       <section
