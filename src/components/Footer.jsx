@@ -178,8 +178,10 @@ export default function Footer({ dark }) {
             >
               {/* Facebook */}
               <a
-                href="#"
-                aria-label="Facebook"
+                href="https://www.facebook.com/share/1E5L4MRQDH/"
+                aria-label="Facebook EGC TV"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={socialStyle}
               >
                 <FaFacebook size={19} />
