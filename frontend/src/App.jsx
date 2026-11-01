@@ -383,6 +383,7 @@ useEffect(() => {
           className="home-section-heading"
           aria-expanded={futureVersionsOpen}
           aria-controls="future-versions-list"
+          data-section="future-versions"
           onClick={() => setFutureVersionsOpen((open) => !open)}
           style={{
             width: "100%",
