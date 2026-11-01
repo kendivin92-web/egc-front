@@ -1,11 +1,17 @@
 import { useState , useEffect } from "react";
-
-//pour les envenement
-  const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
+import { API_URL as API } from "../services/apiConfig";
 
 export default function EventsPage({ dark }) {
 const [EVENTS,setEVENTS] = useState([]);
 const [eventsUnavailable, setEventsUnavailable] = useState(false);
+const [cachedEvents, setCachedEvents] = useState(() => {
+  try {
+    const cached = JSON.parse(localStorage.getItem("evenements") || "[]");
+    return Array.isArray(cached) ? cached : [];
+  } catch {
+    return [];
+  }
+});
 const C = {
   bg: dark ? "#1c1c1e" : "#f5f5f7",
   card: dark ? "#242426" : "#ffffff",
@@ -29,6 +35,8 @@ const C = {
           const data = await res.json();
           if (!Array.isArray(data)) throw new Error("Réponse d’annonces invalide.");
           setEVENTS(data);
+          setCachedEvents(data);
+          localStorage.setItem("evenements", JSON.stringify(data));
           setEventsUnavailable(false);
          
         } catch (error) {
@@ -39,6 +47,10 @@ const C = {
       };
       fetchFideles();
     }, []);
+
+    useEffect(() => {
+      if (EVENTS.length === 0 && cachedEvents.length > 0) setEVENTS(cachedEvents);
+    }, [EVENTS.length, cachedEvents]);
   
  /* const EVENTS = [
   
@@ -394,6 +406,5 @@ const CATEGORIES = [
   );
   
 }
-
 
 

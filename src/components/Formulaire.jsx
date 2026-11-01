@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
+import { API_URL as API } from "../services/apiConfig";
 const createRequestKey = () => crypto.randomUUID();
 // ── Google Fonts injection
 const fontLink = document.createElement("link");

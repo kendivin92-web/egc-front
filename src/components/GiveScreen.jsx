@@ -1,7 +1,7 @@
 // src/screens/GiveScreen.jsx
 import { useState } from "react";
 
-const URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+import { API_URL as URL } from "../services/apiConfig";
 // ── Logo SVGs ──────────────────────────────────────────────────
 const MtnLogo = () => (
   <svg width="48" height="30" viewBox="0 0 80 50" aria-hidden="true">
