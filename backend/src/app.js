@@ -454,11 +454,12 @@ export function createApp({
       response.json(videos);
     } catch (error) {
       console.error("Unable to load Sunday videos from YouTube:", error.message);
-      const videos = FALLBACK_VIDEO_IDS.map((id) => ({
+      const videos = FALLBACK_VIDEO_IDS.map((id, index) => ({
         id,
         title: "Prédication de l’église",
         published: null,
         date: null,
+        sundayOfMonth: index + 1,
       }));
       sundayVideosCache = { expiresAt: Date.now() + 5 * 60 * 1000, videos };
       response.set("Cache-Control", "public, max-age=300");

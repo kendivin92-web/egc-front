@@ -5,10 +5,16 @@ const LIVE_CACHE_KEY = "egc-live-status";
 const DEFAULT_CHANNEL_URL = "https://youtube.com/@egliseglorieuseduchrist";
 const DEFAULT_LIVE_VIDEO_ID = import.meta.env.VITE_YOUTUBE_VIDEO_ID || "";
 const FALLBACK_VIDEOS = [
-  { id: "-L5muQwfe28", title: "Prédication du dimanche 1" },
-  { id: "5e6qmOq2spA", title: "Prédication du dimanche 2" },
-  { id: "_SN_Nf5rjBg", title: "Prédication du dimanche 3" },
-  { id: "MHBnX57oivs", title: "Prédication du dimanche 4" },
+  { id: "-L5muQwfe28", title: "Prédication du 1er dimanche du mois", sundayOfMonth: 1 },
+  { id: "5e6qmOq2spA", title: "Prédication du 2e dimanche du mois", sundayOfMonth: 2 },
+  { id: "_SN_Nf5rjBg", title: "Prédication du 3e dimanche du mois", sundayOfMonth: 3 },
+  { id: "MHBnX57oivs", title: "Prédication du 4e dimanche du mois", sundayOfMonth: 4 },
+];
+const SUNDAY_LABELS = [
+  "1er dimanche du mois",
+  "2e dimanche du mois",
+  "3e dimanche du mois",
+  "4e dimanche du mois",
 ];
 
 function readCache(key, fallback) {
@@ -57,6 +63,8 @@ export const Lives = ({ dark }) => {
       ? ""
       : new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(date);
   };
+  const getSundayLabel = (video, index) =>
+    SUNDAY_LABELS[(video.sundayOfMonth || index + 1) - 1] || SUNDAY_LABELS[index];
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +77,10 @@ export const Lives = ({ dark }) => {
           throw new Error(data?.message || "Réponse vidéo invalide.");
         }
         if (cancelled) return;
-        const latestVideos = data.slice(0, 4);
+        const latestVideos = data.slice(0, 4).map((video, index) => ({
+          ...video,
+          sundayOfMonth: video.sundayOfMonth || index + 1,
+        }));
         setVideos(latestVideos);
         setSelectedVideo((current) => current || latestVideos[0] || null);
         localStorage.setItem(VIDEOS_CACHE_KEY, JSON.stringify(latestVideos));
@@ -167,7 +178,7 @@ export const Lives = ({ dark }) => {
       )}
       <section style={{ width: "100%", maxWidth: 900, marginTop: 28 }}>
         <h3 style={{ color: dark ? "#f0e6c8" : "#173b70", marginBottom: 14 }}>
-          Les 4 dernières prédications du dimanche
+          Les prédications des 4 dimanches du mois
         </h3>
         {videosLoading ? (
           <p>Chargement des prédications…</p>
@@ -186,8 +197,9 @@ export const Lives = ({ dark }) => {
               textAlign: "left",
             }}
           >
-            {videos.map((video) => {
+            {videos.map((video, index) => {
               const active = !liveVideoId && selectedVideo?.id === video.id;
+              const sundayLabel = getSundayLabel(video, index);
               return (
                 <button
                   key={video.id}
@@ -210,7 +222,10 @@ export const Lives = ({ dark }) => {
                     loading="lazy"
                     style={{ width: "100%", borderRadius: 8 }}
                   />
-                  <strong style={{ display: "block", marginTop: 7 }}>{video.title}</strong>
+                  <strong style={{ display: "block", marginTop: 7 }}>{sundayLabel}</strong>
+                  <span style={{ display: "block", marginTop: 5, fontSize: 13 }}>
+                    {video.title}
+                  </span>
                   {formatDate(video.date) && (
                     <span style={{ display: "block", marginTop: 5, fontSize: 12, opacity: 0.75 }}>
                       {formatDate(video.date)}

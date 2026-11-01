@@ -26,6 +26,12 @@ function getSundayDate(title, published) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
 }
 
+function getSundayOfMonth(dateValue) {
+  const date = new Date(`${dateValue}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.ceil(date.getUTCDate() / 7);
+}
+
 export function parseSundayVideos(xml, limit = 4) {
   const videos = [];
   const seenDates = new Set();
@@ -38,7 +44,7 @@ export function parseSundayVideos(xml, limit = 4) {
     const date = getSundayDate(title, published);
     if (!date || seenDates.has(date)) continue;
     seenDates.add(date);
-    videos.push({ id, title, published, date });
+    videos.push({ id, title, published, date, sundayOfMonth: getSundayOfMonth(date) });
     if (videos.length === limit) break;
   }
   return videos;
