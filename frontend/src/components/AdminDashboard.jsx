@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import AdminAnnouncements from "./AdminAnnouncements.jsx";
 import { API_URL } from "../services/apiConfig.js";
@@ -236,6 +236,7 @@ function LoginForm({ onLogin }) {
 
 export default function AdminDashboard() {
   const [session, setSession] = useState(() => readCache(ADMIN_SESSION_KEY));
+  const sessionTokenRef = useRef(session?.token ?? null);
   const [section, setSection] = useState("registrations");
   const [registrations, setRegistrations] = useState([]);
   const [donations, setDonations] = useState([]);
@@ -253,8 +254,10 @@ export default function AdminDashboard() {
   const [exporting, setExporting] = useState(false);
 
   const clearSession = useCallback(() => {
+    sessionTokenRef.current = null;
     setSession(null);
     localStorage.removeItem(ADMIN_SESSION_KEY);
+    localStorage.removeItem(ADMIN_DATA_KEY);
     setRegistrations([]);
     setDonations([]);
     setSummary({ registrations: {}, donations: {} });
@@ -267,6 +270,10 @@ export default function AdminDashboard() {
     clearSession();
     setError("Votre session a expiré. Veuillez vous reconnecter.");
   }, [clearSession]);
+
+  useEffect(() => {
+    if (!session) localStorage.removeItem(ADMIN_DATA_KEY);
+  }, [session]);
 
   const loadData = useCallback(async (token, selectedSection, page, signal) => {
     try {
@@ -287,6 +294,7 @@ export default function AdminDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      if (sessionTokenRef.current !== token) return;
       if (response.status === 401) {
         expireSession();
         return;
@@ -310,7 +318,7 @@ export default function AdminDashboard() {
         setDonationPagination(data.pagination);
       }
     } catch (requestError) {
-      if (signal?.aborted) return;
+      if (signal?.aborted || sessionTokenRef.current !== token) return;
       console.error(`Admin ${selectedSection} load failed:`, requestError);
       const cached = readCache(ADMIN_DATA_KEY);
       if (
@@ -331,7 +339,7 @@ export default function AdminDashboard() {
         setError("Connexion indisponible et aucune donnée synchronisée.");
       }
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!signal?.aborted && sessionTokenRef.current === token) setLoading(false);
     }
   }, [statusFilter, churchStatusFilter, churchRoleFilter, expireSession]);
 
@@ -352,6 +360,7 @@ export default function AdminDashboard() {
     setError("");
     setSection("registrations");
     setRegistrationPage(1);
+    sessionTokenRef.current = token;
     const nextSession = { token, admin };
     writeCache(ADMIN_SESSION_KEY, nextSession);
     setSession(nextSession);
