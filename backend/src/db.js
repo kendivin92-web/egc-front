@@ -38,6 +38,8 @@ export function openDatabase(databasePath) {
         CHECK (status IN ('pending', 'confirmed', 'rejected')),
       church_status TEXT NOT NULL DEFAULT '',
       church_role TEXT NOT NULL DEFAULT '',
+      training_status TEXT NOT NULL DEFAULT ''
+        CHECK (training_status IN ('', 'in_progress', 'passed', 'failed')),
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       UNIQUE (activity_key, normalized_phone)
@@ -67,6 +69,8 @@ export function openDatabase(databasePath) {
 
     CREATE INDEX IF NOT EXISTS registrations_status_id
       ON registrations(status, id DESC);
+    CREATE INDEX IF NOT EXISTS registrations_kind_id
+      ON registrations(registration_kind, id DESC);
     CREATE INDEX IF NOT EXISTS donations_status_id
       ON donation_intents(status, id DESC);
 
@@ -109,11 +113,19 @@ export function openDatabase(databasePath) {
       db.exec(`ALTER TABLE registrations ADD COLUMN ${column} TEXT NOT NULL DEFAULT ''`);
     }
   }
+  if (!registrationColumns.has("training_status")) {
+    db.exec(`
+      ALTER TABLE registrations ADD COLUMN training_status TEXT NOT NULL DEFAULT ''
+      CHECK (training_status IN ('', 'in_progress', 'passed', 'failed'))
+    `);
+  }
   db.exec(`
     CREATE INDEX IF NOT EXISTS registrations_church_status_id
       ON registrations(church_status, id DESC);
     CREATE INDEX IF NOT EXISTS registrations_church_role_id
       ON registrations(church_role, id DESC);
+    CREATE INDEX IF NOT EXISTS registrations_training_status_id
+      ON registrations(training_status, id DESC);
     CREATE INDEX IF NOT EXISTS registrations_status_church_status_role_id
       ON registrations(status, church_status, church_role, id DESC);
   `);
@@ -132,6 +144,14 @@ export function openDatabase(databasePath) {
     SET church_status = COALESCE(NULLIF(json_extract(answers_json, '$.statut'), ''), church_status),
         church_role = COALESCE(NULLIF(json_extract(answers_json, '$.services'), ''), church_role)
     WHERE json_valid(answers_json)
+  `);
+  db.exec(`
+    UPDATE registrations
+    SET training_status = CASE
+      WHEN registration_kind = 'formation' AND training_status = '' THEN 'in_progress'
+      WHEN registration_kind = 'membership' THEN ''
+      ELSE training_status
+    END
   `);
 
   return db;
