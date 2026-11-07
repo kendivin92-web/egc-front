@@ -1,6 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
+import {
+  CheckCircle2,
+  ChevronRight,
+  ClipboardList,
+  Clock3,
+  FileText,
+  GraduationCap,
+  LogOut,
+  Megaphone,
+  RefreshCw,
+  ShieldCheck,
+  Users,
+  UserRound,
+  Wallet,
+} from "lucide-react";
 import AdminAnnouncements from "./AdminAnnouncements.jsx";
+import adminLogo from "../assets/admin-logo.png";
 import { API_URL } from "../services/apiConfig.js";
 
 const API = API_URL;
@@ -114,6 +130,13 @@ const CHURCH_ROLES = [
   "Accueil", "Chantre", "Sonorisation", "Sécurité",
   "Logistique", "NTIC", "Administration", "Communication", "Traduction",
 ];
+const REGISTRATION_SECTIONS = ["registrations", "members", "servants", "training"];
+const TRAINING_STATUS_LABELS = {
+  in_progress: "En formation",
+  passed: "Formation validée",
+  failed: "Formation échouée",
+};
+const TRAINING_STATUSES = Object.keys(TRAINING_STATUS_LABELS);
 
 async function fetchAllRegistrations(token, statusFilter, churchStatusFilter, churchRoleFilter) {
   const registrations = [];
@@ -168,6 +191,146 @@ function PaginationControls({ pagination, onPageChange }) {
         </button>
       </div>
     </nav>
+  );
+}
+
+function RegistrationRecord({
+  registration,
+  onUpdate,
+  onTrainingStatusChange,
+  churchRoles = CHURCH_ROLES,
+  showTrainingStatus = false,
+}) {
+  const isTraining = registration.registration_kind === "formation";
+
+  return (
+    <article className="admin-record" key={registration.id}>
+      <div className="admin-record-main">
+        <div className="admin-record-title">
+          <h3>{registration.first_name} {registration.last_name}</h3>
+          <StatusBadge status={registration.status} />
+          {showTrainingStatus && isTraining && (
+            <span className={`admin-status admin-training-status-${registration.training_status}`}>
+              {TRAINING_STATUS_LABELS[registration.training_status] ?? "En formation"}
+            </span>
+          )}
+        </div>
+        <p className="admin-record-activity">
+          {isTraining ? "Formation" : "Adhésion"}
+          {" · "}{registration.activity_name}
+        </p>
+        {!isTraining && (
+          <>
+            <p>
+              Statut dans l’église : <strong>{registration.church_status || "Non renseigné"}</strong>
+              {" · "}Fonction : <strong>{registration.church_role || "Non renseignée"}</strong>
+            </p>
+            <div className="admin-record-fields">
+              <label>
+                <span>Statut dans l’église</span>
+                <select
+                  value={registration.church_status || ""}
+                  onChange={(event) => onUpdate(registration, { churchStatus: event.target.value })}
+                >
+                  <option value="">Non renseigné</option>
+                  {CHURCH_STATUSES.map((value) => (
+                    <option key={value} value={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Fonction</span>
+                <select
+                  value={registration.church_role || ""}
+                  onChange={(event) => onUpdate(registration, { churchRole: event.target.value })}
+                >
+                  <option value="">Non renseignée</option>
+                  {churchRoles.map((value) => (
+                    <option key={value} value={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </>
+        )}
+        {showTrainingStatus && isTraining && (
+          <div className="admin-record-fields admin-training-field">
+            <label>
+              <span>Résultat de la formation</span>
+              <select
+                value={registration.training_status || "in_progress"}
+                onChange={(event) => onTrainingStatusChange(registration, event.target.value)}
+              >
+                {TRAINING_STATUSES.map((value) => (
+                  <option key={value} value={value}>{TRAINING_STATUS_LABELS[value]}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+        <p>{registration.phone}{registration.email ? ` · ${registration.email}` : ""}</p>
+        {(registration.address || registration.city || registration.district) && (
+          <p>
+            {registration.address || "Adresse non renseignée"}
+            {registration.district ? ` · ${registration.district}` : ""}
+            {registration.city ? `, ${registration.city}` : ""}
+          </p>
+        )}
+        <time>{formatDate(registration.created_at)}</time>
+      </div>
+      {registration.status === "pending" && (
+        <div className="admin-record-actions">
+          <button
+            type="button"
+            className="admin-approve-button"
+            onClick={() => onUpdate(registration, { status: "confirmed" })}
+          >
+            Valider
+          </button>
+          <button
+            type="button"
+            className="admin-reject-button"
+            onClick={() => onUpdate(registration, { status: "rejected" })}
+          >
+            Refuser
+          </button>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function StatusOverviewCard({ eyebrow, title, icon, metrics, maxValue }) {
+  return (
+    <article className="admin-analytics-card">
+      <div className="admin-panel-heading">
+        <div>
+          <span className="admin-panel-eyebrow">{eyebrow}</span>
+          <h2>{title}</h2>
+        </div>
+        <span className="admin-panel-icon">{createElement(icon, { size: 17, "aria-hidden": true })}</span>
+      </div>
+      <div className="admin-status-bars">
+        {metrics.map((metric) => (
+          <div className="admin-status-row" key={metric.label}>
+            <div className="admin-status-row-label">
+              <span>{metric.label}</span>
+              <strong>{metric.value}</strong>
+            </div>
+            <div
+              className="admin-status-track"
+              role="img"
+              aria-label={`${metric.label} : ${metric.value}`}
+            >
+              <span
+                className={metric.className || "is-role"}
+                style={{ width: `${(metric.value / maxValue) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </article>
   );
 }
 
@@ -248,6 +411,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [churchStatusFilter, setChurchStatusFilter] = useState("all");
   const [churchRoleFilter, setChurchRoleFilter] = useState("all");
+  const [trainingStatusFilter, setTrainingStatusFilter] = useState("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -260,7 +424,7 @@ export default function AdminDashboard() {
     localStorage.removeItem(ADMIN_DATA_KEY);
     setRegistrations([]);
     setDonations([]);
-    setSummary({ registrations: {}, donations: {} });
+    setSummary({ registrations: {}, memberships: {}, servants: {}, training: {}, donations: {} });
     setRegistrationPagination(null);
     setDonationPagination(null);
     setLoading(false);
@@ -278,17 +442,37 @@ export default function AdminDashboard() {
   const loadData = useCallback(async (token, selectedSection, page, signal) => {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
-      const isRegistrations = selectedSection === "registrations";
-      if (isRegistrations && statusFilter !== "all") {
+      const isRegistrationSection = REGISTRATION_SECTIONS.includes(selectedSection);
+      const filters = {
+        statusFilter: selectedSection === "registrations" ? statusFilter : "all",
+        churchStatusFilter: selectedSection === "registrations" ? churchStatusFilter : "all",
+        churchRoleFilter: selectedSection === "servants" ? churchRoleFilter : "all",
+        trainingStatusFilter: selectedSection === "training" ? trainingStatusFilter : "all",
+      };
+      if (selectedSection === "registrations" && statusFilter !== "all") {
         params.set("status", statusFilter);
       }
-      if (isRegistrations && churchStatusFilter !== "all") {
+      if (["members", "servants", "training"].includes(selectedSection)) {
+        params.set("status", "confirmed");
+      }
+      if (selectedSection === "registrations" && churchStatusFilter !== "all") {
         params.set("churchStatus", churchStatusFilter);
       }
-      if (isRegistrations && churchRoleFilter !== "all") {
+      if (selectedSection === "registrations" && churchRoleFilter !== "all") {
         params.set("churchRole", churchRoleFilter);
       }
-      const path = isRegistrations ? "/api/admin/registrations" : "/api/admin/donations";
+      if (selectedSection === "members" || selectedSection === "servants") {
+        params.set("registrationKind", "membership");
+      }
+      if (selectedSection === "servants") {
+        params.set("hasRole", "true");
+        if (churchRoleFilter !== "all") params.set("churchRole", churchRoleFilter);
+      }
+      if (selectedSection === "training") {
+        params.set("registrationKind", "formation");
+        if (trainingStatusFilter !== "all") params.set("trainingStatus", trainingStatusFilter);
+      }
+      const path = isRegistrationSection ? "/api/admin/registrations" : "/api/admin/donations";
       const response = await fetch(`${API}${path}?${params}`, {
         signal,
         headers: { Authorization: `Bearer ${token}` },
@@ -307,10 +491,10 @@ export default function AdminDashboard() {
       writeCache(ADMIN_DATA_KEY, {
         section: selectedSection,
         page,
-        filters: { statusFilter, churchStatusFilter, churchRoleFilter },
+        filters,
         data,
       });
-      if (selectedSection === "registrations") {
+      if (isRegistrationSection) {
         setRegistrations(data.registrations);
         setRegistrationPagination(data.pagination);
       } else {
@@ -324,10 +508,16 @@ export default function AdminDashboard() {
       if (
         cached?.section === selectedSection
         && cached.page === page
+        && JSON.stringify(cached.filters) === JSON.stringify({
+          statusFilter: selectedSection === "registrations" ? statusFilter : "all",
+          churchStatusFilter: selectedSection === "registrations" ? churchStatusFilter : "all",
+          churchRoleFilter: selectedSection === "servants" ? churchRoleFilter : "all",
+          trainingStatusFilter: selectedSection === "training" ? trainingStatusFilter : "all",
+        })
         && cached.data
       ) {
         setSummary(cached.data.summary);
-        if (selectedSection === "registrations") {
+        if (REGISTRATION_SECTIONS.includes(selectedSection)) {
           setRegistrations(cached.data.registrations);
           setRegistrationPagination(cached.data.pagination);
         } else {
@@ -341,11 +531,11 @@ export default function AdminDashboard() {
     } finally {
       if (!signal?.aborted && sessionTokenRef.current === token) setLoading(false);
     }
-  }, [statusFilter, churchStatusFilter, churchRoleFilter, expireSession]);
+  }, [statusFilter, churchStatusFilter, churchRoleFilter, trainingStatusFilter, expireSession]);
 
   useEffect(() => {
-    if (!session || !["registrations", "donations"].includes(section)) return;
-    const page = section === "registrations" ? registrationPage : donationPage;
+    if (!session || (!REGISTRATION_SECTIONS.includes(section) && section !== "donations")) return;
+    const page = REGISTRATION_SECTIONS.includes(section) ? registrationPage : donationPage;
     const controller = new AbortController();
     queueMicrotask(() => {
       if (!controller.signal.aborted) {
@@ -455,112 +645,451 @@ export default function AdminDashboard() {
 
   const updateRegistration = (registration, status) =>
     updateRegistrationProfile(registration, { status });
+  const selectSection = (nextSection) => {
+    setError("");
+    setNotice("");
+    if (nextSection === section) {
+      if (REGISTRATION_SECTIONS.includes(nextSection)) {
+        setLoading(true);
+        loadData(session.token, nextSection, registrationPage);
+      } else if (nextSection === "donations") {
+        setLoading(true);
+        loadData(session.token, nextSection, donationPage);
+      }
+      return;
+    }
+
+    setSection(nextSection);
+    if (REGISTRATION_SECTIONS.includes(nextSection)) {
+      setLoading(true);
+      setRegistrationPage(1);
+    } else if (nextSection === "donations") {
+      setLoading(true);
+      setDonationPage(1);
+    } else {
+      setLoading(false);
+    }
+  };
 
   if (!session) {
     return <LoginForm onLogin={handleLogin} />;
   }
 
-  const pendingCount = summary.registrations.pending ?? 0;
-  const pendingDonationCount = summary.donations.pending_provider ?? 0;
+  const registrationCounts = summary.registrations ?? {};
+  const donationCounts = summary.donations ?? {};
+  const pendingCount = registrationCounts.pending ?? 0;
+  const pendingDonationCount = donationCounts.pending_provider ?? 0;
+  const totalRegistrationCount = Object.values(registrationCounts)
+    .reduce((total, count) => total + Number(count || 0), 0);
+  const confirmedCount = registrationCounts.confirmed ?? 0;
+  const rejectedCount = registrationCounts.rejected ?? 0;
+  const membershipCounts = summary.memberships ?? {};
+  const memberCount = Object.values(membershipCounts)
+    .reduce((total, count) => total + Number(count || 0), 0);
+  const servantSummary = summary.servants ?? {};
+  const servantCount = servantSummary.total ?? 0;
+  const servantRoleCounts = servantSummary.roles ?? {};
+  const servantRoles = [...new Set([...CHURCH_ROLES, ...Object.keys(servantRoleCounts)])];
+  const trainingCounts = summary.training ?? {};
+  const membershipStatusMetrics = [
+    { label: "À examiner", value: membershipCounts.pending ?? 0, className: "is-pending" },
+    { label: "Adhésions validées", value: membershipCounts.confirmed ?? 0, className: "is-confirmed" },
+    { label: "Refusées", value: membershipCounts.rejected ?? 0, className: "is-rejected" },
+  ];
+  const trainingStatusMetrics = [
+    { label: TRAINING_STATUS_LABELS.in_progress, value: trainingCounts.in_progress ?? 0, className: "is-pending" },
+    { label: TRAINING_STATUS_LABELS.passed, value: trainingCounts.passed ?? 0, className: "is-confirmed" },
+    { label: TRAINING_STATUS_LABELS.failed, value: trainingCounts.failed ?? 0, className: "is-rejected" },
+  ];
+  const roleMetrics = servantRoles
+    .map((role) => ({ label: role, value: servantRoleCounts[role] ?? 0 }))
+    .filter((metric) => metric.value > 0);
+  const maxMembershipCount = Math.max(...membershipStatusMetrics.map((metric) => metric.value), 1);
+  const maxTrainingCount = Math.max(...trainingStatusMetrics.map((metric) => metric.value), 1);
+  const maxRoleCount = Math.max(...roleMetrics.map((metric) => metric.value), 1);
+  const maxRegistrationCount = Math.max(pendingCount, confirmedCount, rejectedCount, 1);
+  const registrationStatusMetrics = [
+    { label: "À examiner", value: pendingCount, className: "is-pending" },
+    { label: "Validées", value: confirmedCount, className: "is-confirmed" },
+    { label: "Refusées", value: rejectedCount, className: "is-rejected" },
+  ];
+  const sectionCopy = {
+    registrations: ["Inscriptions", "Consultez et traitez les demandes d’adhésion et de formation."],
+    members: ["Membres", "Retrouvez les adhésions et mettez à jour les informations des membres."],
+    servants: ["Serviteurs", "Consultez les serviteurs et filtrez-les selon leur fonction."],
+    training: ["Formations", "Suivez les personnes en formation, leurs réussites et leurs résultats."],
+    donations: ["Dons", "Consultez les demandes de dons en attente d’activation."],
+    announcements: ["Annonces", "Publiez et gérez les événements de la communauté."],
+  }[section];
+  const renderDirectorySection = (directory) => {
+    const headings = {
+      members: ["Membres actifs", "Liste des adhésions validées."],
+      servants: ["Serviteurs", "Membres actifs ayant une fonction dans l’église."],
+      training: ["Personnes en formation", "Le résultat est indépendant de la validation de l’inscription."],
+    };
+    const [heading, description] = headings[directory];
+
+    return (
+      <section className="admin-content">
+        <div className="admin-list-heading">
+          <div>
+            <h2>{heading}</h2>
+            <p>{description}</p>
+          </div>
+          {directory === "servants" && (
+            <label className="admin-filter">
+              <span>Fonction</span>
+              <select
+                value={churchRoleFilter}
+                onChange={(event) => {
+                  setLoading(true);
+                  setChurchRoleFilter(event.target.value);
+                  setRegistrationPage(1);
+                }}
+              >
+                <option value="all">Toutes</option>
+                {servantRoles.map((role) => <option key={role} value={role}>{role}</option>)}
+              </select>
+            </label>
+          )}
+          {directory === "training" && (
+            <label className="admin-filter">
+              <span>Résultat</span>
+              <select
+                value={trainingStatusFilter}
+                onChange={(event) => {
+                  setLoading(true);
+                  setTrainingStatusFilter(event.target.value);
+                  setRegistrationPage(1);
+                }}
+              >
+                <option value="all">Tous les résultats</option>
+                {TRAINING_STATUSES.map((status) => (
+                  <option key={status} value={status}>{TRAINING_STATUS_LABELS[status]}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        {loading && registrations.length === 0 ? (
+          <p className="admin-empty">Chargement…</p>
+        ) : registrations.length === 0 ? (
+          <p className="admin-empty">
+            {directory === "servants"
+              ? "Aucun serviteur pour cette fonction."
+              : directory === "training"
+                ? "Aucune personne en formation pour ce résultat."
+                : "Aucun membre actif pour le moment."}
+          </p>
+        ) : (
+          <div className="admin-record-list">
+            {registrations.map((registration) => (
+              <RegistrationRecord
+                key={registration.id}
+                registration={registration}
+                onUpdate={updateRegistrationProfile}
+                churchRoles={servantRoles}
+                onTrainingStatusChange={(record, trainingStatus) => updateRegistrationProfile(
+                  record,
+                  { trainingStatus },
+                )}
+                showTrainingStatus={directory === "training"}
+              />
+            ))}
+          </div>
+        )}
+        <PaginationControls
+          pagination={registrationPagination}
+          onPageChange={(page) => {
+            setLoading(true);
+            setRegistrationPage(page);
+          }}
+        />
+      </section>
+    );
+  };
 
   return (
-    <main className="admin-page">
-      <header className="admin-header">
-        <div>
-          <span className="admin-kicker">ÉGLISE GLORIEUSE DU CHRIST</span>
-          <h1>Administration</h1>
-          <p>Connecté en tant que {session.admin.email}</p>
+    <div className="admin-shell">
+      <aside className="admin-sidebar">
+        <div className="admin-brand">
+          <span className="admin-brand-mark">
+            <img src={adminLogo} alt="Logo de l’Église Glorieuse du Christ" />
+          </span>
+          <span className="admin-brand-copy">
+            <strong>EGC</strong>
+            <span>ESPACE ADMIN</span>
+          </span>
         </div>
-        <button
-          type="button"
-          className="admin-secondary-button"
-          onClick={() => {
-            clearSession();
-            setError("");
-            setNotice("");
-          }}
-        >
-          Se déconnecter
-        </button>
-      </header>
 
-      <section className="admin-summary" aria-label="Résumé">
-        <article>
-          <span>Inscriptions à examiner</span>
-          <strong>{pendingCount}</strong>
-        </article>
-        <article>
-          <span>Dons en attente d’activation</span>
-          <strong>{pendingDonationCount}</strong>
-        </article>
-      </section>
-
-      <nav className="admin-tabs" aria-label="Sections d’administration">
-        <button
-          type="button"
-          className={section === "registrations" ? "is-active" : ""}
-          onClick={() => {
-            setLoading(true);
-            setError("");
-            if (section === "registrations" && registrationPage === 1) {
-              loadData(session.token, "registrations", 1);
-            }
-            setRegistrationPage(1);
-            setSection("registrations");
-          }}
-        >
-          Inscriptions
-        </button>
-        <button
-          type="button"
-          className={section === "donations" ? "is-active" : ""}
-          onClick={() => {
-            setLoading(true);
-            setError("");
-            if (section === "donations" && donationPage === 1) {
-              loadData(session.token, "donations", 1);
-            }
-            setDonationPage(1);
-            setSection("donations");
-          }}
-        >
-          Dons
-        </button>
-        <button
-          type="button"
-          className={section === "announcements" ? "is-active" : ""}
-          onClick={() => {
-            setLoading(false);
-            setError("");
-            setSection("announcements");
-          }}
-        >
-          Annonces
-        </button>
-        {section !== "announcements" && (
+        <span className="admin-nav-label">GESTION DE L’ÉGLISE</span>
+        <nav className="admin-tabs" aria-label="Sections d’administration">
           <button
             type="button"
-            className="admin-refresh"
-            onClick={() => {
-              setLoading(true);
-              setError("");
-              loadData(
-                session.token,
-                section,
-                section === "registrations" ? registrationPage : donationPage,
-              );
-            }}
-            disabled={loading}
+            className={section === "registrations" ? "is-active" : ""}
+            onClick={() => selectSection("registrations")}
           >
-            {loading ? "Actualisation…" : "Actualiser"}
+            <ClipboardList size={17} aria-hidden="true" />
+            <span>Inscriptions</span>
+            {pendingCount > 0 && <span className="admin-nav-count">{pendingCount}</span>}
           </button>
-        )}
-      </nav>
+          <button
+            type="button"
+            className={section === "members" ? "is-active" : ""}
+            onClick={() => selectSection("members")}
+          >
+            <Users size={17} aria-hidden="true" />
+            <span>Membres</span>
+          </button>
+          <button
+            type="button"
+            className={section === "servants" ? "is-active" : ""}
+            onClick={() => selectSection("servants")}
+          >
+            <UserRound size={17} aria-hidden="true" />
+            <span>Serviteurs</span>
+          </button>
+          <button
+            type="button"
+            className={section === "training" ? "is-active" : ""}
+            onClick={() => selectSection("training")}
+          >
+            <GraduationCap size={17} aria-hidden="true" />
+            <span>Formations</span>
+          </button>
+          <button
+            type="button"
+            className={section === "donations" ? "is-active" : ""}
+            onClick={() => selectSection("donations")}
+          >
+            <Wallet size={17} aria-hidden="true" />
+            <span>Dons</span>
+          </button>
+          <button
+            type="button"
+            className={section === "announcements" ? "is-active" : ""}
+            onClick={() => selectSection("announcements")}
+          >
+            <Megaphone size={17} aria-hidden="true" />
+            <span>Annonces</span>
+          </button>
+        </nav>
 
-      {error && <p className="admin-error" role="alert">{error}</p>}
-      {notice && <p className="admin-notice" role="status">{notice}</p>}
+        <div className="admin-sidebar-footer">
+          <ShieldCheck size={17} aria-hidden="true" />
+          <span>
+            <strong>Espace sécurisé</strong>
+            <small>Administration EGC</small>
+          </span>
+        </div>
+      </aside>
 
-      {section === "registrations" ? (
+      <main className="admin-workspace">
+        <header className="admin-topbar">
+          <div className="admin-breadcrumb">
+            <span>EGC</span>
+            <ChevronRight size={14} aria-hidden="true" />
+            <strong>Administration</strong>
+          </div>
+          <div className="admin-profile">
+            <span className="admin-profile-avatar" aria-hidden="true">
+              {session.admin.email?.charAt(0).toUpperCase() || "A"}
+            </span>
+            <span className="admin-profile-email">{session.admin.email}</span>
+            <button
+              type="button"
+              className="admin-logout-button"
+              onClick={() => {
+                clearSession();
+                setError("");
+                setNotice("");
+              }}
+              aria-label="Se déconnecter"
+              title="Se déconnecter"
+            >
+              <LogOut size={17} aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+
+        <div className="admin-page">
+          <header className="admin-header">
+            <div>
+              <span className="admin-kicker">VOTRE ESPACE DE PILOTAGE</span>
+              <h1>{sectionCopy[0]}</h1>
+              <p>{sectionCopy[1]}</p>
+            </div>
+            {section !== "announcements" && (
+              <button
+                type="button"
+                className="admin-refresh"
+                onClick={() => {
+                  setLoading(true);
+                  setError("");
+                  loadData(
+                    session.token,
+                    section,
+                    REGISTRATION_SECTIONS.includes(section) ? registrationPage : donationPage,
+                  );
+                }}
+                disabled={loading}
+              >
+                <RefreshCw size={15} aria-hidden="true" />
+                {loading ? "Actualisation…" : "Actualiser"}
+              </button>
+            )}
+          </header>
+
+          {section === "registrations" && (
+            <>
+              <section className="admin-summary" aria-label="Résumé des inscriptions">
+                <article>
+                  <span className="admin-summary-icon"><Users size={17} aria-hidden="true" /></span>
+                  <span>Total des inscriptions</span>
+                  <strong>{totalRegistrationCount}</strong>
+                </article>
+                <article>
+                  <span className="admin-summary-icon is-pending"><Clock3 size={17} aria-hidden="true" /></span>
+                  <span>À examiner</span>
+                  <strong>{pendingCount}</strong>
+                </article>
+                <article>
+                  <span className="admin-summary-icon is-confirmed"><CheckCircle2 size={17} aria-hidden="true" /></span>
+                  <span>Inscriptions validées</span>
+                  <strong>{confirmedCount}</strong>
+                </article>
+              </section>
+
+              <section className="admin-overview-grid" aria-label="État des inscriptions">
+                <StatusOverviewCard
+                  eyebrow="VUE D’ENSEMBLE"
+                  title="État des inscriptions"
+                  icon={FileText}
+                  metrics={registrationStatusMetrics}
+                  maxValue={maxRegistrationCount}
+                />
+              </section>
+            </>
+          )}
+
+          {section === "members" && (
+            <>
+              <section className="admin-summary" aria-label="Résumé des membres">
+                <article>
+                  <span className="admin-summary-icon"><Users size={17} aria-hidden="true" /></span>
+                  <span>Total des adhésions</span>
+                  <strong>{memberCount}</strong>
+                </article>
+                <article>
+                  <span className="admin-summary-icon is-confirmed"><CheckCircle2 size={17} aria-hidden="true" /></span>
+                  <span>Membres validés</span>
+                  <strong>{membershipCounts.confirmed ?? 0}</strong>
+                </article>
+                <article>
+                  <span className="admin-summary-icon is-pending"><Clock3 size={17} aria-hidden="true" /></span>
+                  <span>En attente</span>
+                  <strong>{membershipCounts.pending ?? 0}</strong>
+                </article>
+              </section>
+              <section className="admin-overview-grid" aria-label="État des adhésions">
+                <StatusOverviewCard
+                  eyebrow="MEMBRES"
+                  title="État des adhésions"
+                  icon={Users}
+                  metrics={membershipStatusMetrics}
+                  maxValue={maxMembershipCount}
+                />
+              </section>
+            </>
+          )}
+
+          {section === "servants" && (
+            <>
+              <section className="admin-summary" aria-label="Résumé des serviteurs">
+                <article>
+                  <span className="admin-summary-icon"><UserRound size={17} aria-hidden="true" /></span>
+                  <span>Serviteurs avec une fonction</span>
+                  <strong>{servantCount}</strong>
+                </article>
+                <article>
+                  <span className="admin-summary-icon is-confirmed"><ShieldCheck size={17} aria-hidden="true" /></span>
+                  <span>Fonctions représentées</span>
+                  <strong>{roleMetrics.length}</strong>
+                </article>
+              </section>
+              {roleMetrics.length > 0 && (
+                <section className="admin-overview-grid" aria-label="Répartition par fonction">
+                  <StatusOverviewCard
+                    eyebrow="ÉQUIPES DE SERVICE"
+                    title="Serviteurs par fonction"
+                    icon={UserRound}
+                    metrics={roleMetrics}
+                    maxValue={maxRoleCount}
+                  />
+                </section>
+              )}
+            </>
+          )}
+
+          {section === "training" && (
+            <>
+              <section className="admin-summary" aria-label="Résumé des formations">
+                {trainingStatusMetrics.map((metric) => (
+                  <article key={metric.label}>
+                    <span className={`admin-summary-icon ${metric.className}`}>
+                      {metric.className === "is-confirmed"
+                        ? <CheckCircle2 size={17} aria-hidden="true" />
+                        : metric.className === "is-rejected"
+                          ? <ShieldCheck size={17} aria-hidden="true" />
+                          : <GraduationCap size={17} aria-hidden="true" />}
+                    </span>
+                    <span>{metric.label}</span>
+                    <strong>{metric.value}</strong>
+                  </article>
+                ))}
+              </section>
+              <section className="admin-overview-grid" aria-label="Résultats des formations">
+                <StatusOverviewCard
+                  eyebrow="SUIVI PÉDAGOGIQUE"
+                  title="État des formations"
+                  icon={GraduationCap}
+                  metrics={trainingStatusMetrics}
+                  maxValue={maxTrainingCount}
+                />
+              </section>
+            </>
+          )}
+
+          {section === "donations" && (
+            <>
+              <section className="admin-summary" aria-label="Résumé des dons">
+                <article>
+                  <span className="admin-summary-icon is-donations"><Wallet size={17} aria-hidden="true" /></span>
+                  <span>Dons en attente d’activation</span>
+                  <strong>{pendingDonationCount}</strong>
+                </article>
+              </section>
+
+              <section className="admin-overview-grid admin-overview-single" aria-label="État des dons">
+                <article className="admin-analytics-card admin-donation-card">
+                  <div className="admin-panel-heading">
+                    <div>
+                      <span className="admin-panel-eyebrow">SOUTIEN</span>
+                      <h2>Traitement des dons</h2>
+                    </div>
+                    <span className="admin-panel-icon"><Wallet size={17} aria-hidden="true" /></span>
+                  </div>
+                  <p>Les paiements mobiles ne sont pas encore connectés.</p>
+                  <span className="admin-donation-note">Aucune demande affichée ne déclenche de paiement.</span>
+                </article>
+              </section>
+            </>
+          )}
+
+          {error && <p className="admin-error" role="alert">{error}</p>}
+          {notice && <p className="admin-notice" role="status">{notice}</p>}
+
+          {section === "registrations" ? (
         <section className="admin-content">
           <div className="admin-list-heading">
             <div>
@@ -720,6 +1249,12 @@ export default function AdminDashboard() {
             }}
           />
         </section>
+      ) : section === "members" ? (
+        renderDirectorySection("members")
+      ) : section === "servants" ? (
+        renderDirectorySection("servants")
+      ) : section === "training" ? (
+        renderDirectorySection("training")
       ) : section === "donations" ? (
         <section className="admin-content">
           <div className="admin-list-heading">
@@ -760,6 +1295,8 @@ export default function AdminDashboard() {
       ) : (
         <AdminAnnouncements token={session.token} onSessionExpired={expireSession} />
       )}
-    </main>
+        </div>
+      </main>
+    </div>
   );
 }
