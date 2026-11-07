@@ -883,6 +883,9 @@ export default function AdminDashboard() {
   const roleMetrics = servantRoles
     .map((role) => ({ label: role, value: servantRoleCounts[role] ?? 0 }))
     .filter((metric) => metric.value > 0);
+  const servantChartMetrics = roleMetrics.length > 0
+    ? roleMetrics
+    : [{ label: "Aucun serviteur avec une fonction", value: 0, color: "#e9eff6" }];
   const maxTrainingCount = Math.max(...trainingStatusMetrics.map((metric) => metric.value), 1);
   const maxRegistrationCount = Math.max(pendingCount, confirmedCount, rejectedCount, 1);
   const registrationStatusMetrics = [
@@ -1221,16 +1224,14 @@ export default function AdminDashboard() {
                   <strong>{roleMetrics.length}</strong>
                 </article>
               </section>
-              {roleMetrics.length > 0 && (
-                <section className="admin-overview-grid admin-overview-single" aria-label="Répartition par fonction">
-                  <DonutOverviewCard
-                    eyebrow="ÉQUIPES DE SERVICE"
-                    title="Serviteurs par fonction"
-                    icon={UserRound}
-                    metrics={roleMetrics}
-                  />
-                </section>
-              )}
+              <section className="admin-overview-grid admin-overview-single" aria-label="Répartition par fonction">
+                <DonutOverviewCard
+                  eyebrow="ÉQUIPES DE SERVICE"
+                  title="Serviteurs par fonction"
+                  icon={UserRound}
+                  metrics={servantChartMetrics}
+                />
+              </section>
             </>
           )}
 
