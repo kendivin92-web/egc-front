@@ -555,7 +555,7 @@ function LoginForm({ onLogin }) {
 }
 
 export default function AdminDashboard() {
-  const [session, setSession] = useState(() => readCache(ADMIN_SESSION_KEY));
+  const [session, setSession] = useState(null);
   const sessionTokenRef = useRef(session?.token ?? null);
   const [section, setSection] = useState("registrations");
   const [registrations, setRegistrations] = useState([]);
@@ -591,6 +591,10 @@ export default function AdminDashboard() {
     clearSession();
     setError("Votre session a expiré. Veuillez vous reconnecter.");
   }, [clearSession]);
+
+  useEffect(() => {
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+  }, []);
 
   useEffect(() => {
     if (!session) localStorage.removeItem(ADMIN_DATA_KEY);
@@ -709,7 +713,6 @@ export default function AdminDashboard() {
     setRegistrationPage(1);
     sessionTokenRef.current = token;
     const nextSession = { token, admin };
-    writeCache(ADMIN_SESSION_KEY, nextSession);
     setSession(nextSession);
   };
 
