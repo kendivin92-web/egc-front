@@ -125,6 +125,99 @@ function printRegistrations(records, printWindow) {
   printWindow.close();
 }
 
+const DIRECTORY_EXPORT_COLUMNS = [
+  "Nom",
+  "Activité",
+  "Téléphone",
+  "E-mail",
+  "Adresse",
+  "Quartier",
+  "Ville",
+  "Statut dans l’église",
+  "Fonction",
+  "Date d’adhésion",
+];
+
+function getDirectoryExportRows(records) {
+  return records.map((registration) => ({
+    Nom: `${registration.first_name} ${registration.last_name}`,
+    Activité: registration.activity_name,
+    Téléphone: registration.phone,
+    "E-mail": registration.email || "",
+    Adresse: registration.address || "",
+    Quartier: registration.district || "",
+    Ville: registration.city || "",
+    "Statut dans l’église": registration.church_status || "",
+    Fonction: registration.church_role || "",
+    "Date d’adhésion": formatDate(registration.created_at),
+  }));
+}
+
+function printDirectoryRecords(records, directory, printWindow) {
+  const title = directory === "servants" ? "Liste des serviteurs EGC" : "Liste des membres EGC";
+  const rows = getDirectoryExportRows(records).map((record) => `
+    <tr>${Object.values(record).map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>
+  `).join("");
+  printWindow.document.write(`<!doctype html>
+    <html lang="fr">
+      <head>
+        <meta charset="utf-8">
+        <title>${escapeHtml(title)}</title>
+        <style>
+          body { color: #111; font: 10pt Arial, sans-serif; padding: 12mm; }
+          h1 { font-size: 18pt; }
+          p { margin-bottom: 18px; }
+          table { border-collapse: collapse; width: 100%; }
+          th, td { border: 1px solid #999; overflow-wrap: anywhere; padding: 5px; text-align: left; }
+          thead { display: table-header-group; }
+          tr { break-inside: avoid; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <h1>${escapeHtml(title)}</h1>
+        <p>Généré le ${escapeHtml(new Date().toLocaleDateString("fr-FR"))} · ${records.length} personnes</p>
+        <table>
+          <thead><tr>${DIRECTORY_EXPORT_COLUMNS.map((heading) => `<th>${escapeHtml(heading)}</th>`).join("")}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body>
+    </html>`);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  printWindow.close();
+}
+
+function downloadWordDirectory(records, directory) {
+  const title = directory === "servants" ? "Liste des serviteurs EGC" : "Liste des membres EGC";
+  const rows = getDirectoryExportRows(records);
+  const tableRows = rows.map((record) => `
+    <tr>${Object.values(record).map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>
+  `).join("");
+  const documentContent = `<!doctype html>
+    <html lang="fr">
+      <head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head>
+      <body>
+        <h1>${escapeHtml(title)}</h1>
+        <p>Généré le ${escapeHtml(new Date().toLocaleDateString("fr-FR"))} · ${records.length} personnes</p>
+        <table border="1">
+          <thead><tr>${DIRECTORY_EXPORT_COLUMNS.map((heading) => `<th>${escapeHtml(heading)}</th>`).join("")}</tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </body>
+    </html>`;
+  const blob = new Blob(["\ufeff", documentContent], { type: "application/msword;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${directory === "servants" ? "serviteurs" : "membres"}-egc-${new Date().toISOString().slice(0, 10)}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 const CHURCH_STATUSES = ["Assistant(e)", "En service", "En formation"];
 const CHURCH_ROLES = [
   "Accueil", "Chantre", "Sonorisation", "Sécurité",
@@ -138,7 +231,13 @@ const TRAINING_STATUS_LABELS = {
 };
 const TRAINING_STATUSES = Object.keys(TRAINING_STATUS_LABELS);
 
-async function fetchAllRegistrations(token, statusFilter, churchStatusFilter, churchRoleFilter) {
+async function fetchAllRegistrations(
+  token,
+  statusFilter,
+  churchStatusFilter,
+  churchRoleFilter,
+  directory = "registrations",
+) {
   const registrations = [];
   let totalPages = 1;
   for (let page = 1; page <= totalPages; page += 1) {
@@ -146,9 +245,18 @@ async function fetchAllRegistrations(token, statusFilter, churchStatusFilter, ch
       page: String(page),
       limit: String(EXPORT_PAGE_SIZE),
     });
-    if (statusFilter !== "all") params.set("status", statusFilter);
-    if (churchStatusFilter !== "all") params.set("churchStatus", churchStatusFilter);
-    if (churchRoleFilter !== "all") params.set("churchRole", churchRoleFilter);
+    if (directory === "members" || directory === "servants") {
+      params.set("status", "confirmed");
+      params.set("registrationKind", "membership");
+      if (directory === "servants") {
+        params.set("hasRole", "true");
+        if (churchRoleFilter !== "all") params.set("churchRole", churchRoleFilter);
+      }
+    } else {
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (churchStatusFilter !== "all") params.set("churchStatus", churchStatusFilter);
+      if (churchRoleFilter !== "all") params.set("churchRole", churchRoleFilter);
+    }
     const response = await fetch(`${API}/api/admin/registrations?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -329,6 +437,55 @@ function StatusOverviewCard({ eyebrow, title, icon, metrics, maxValue }) {
             </div>
           </div>
         ))}
+      </div>
+    </article>
+  );
+}
+
+function DonutOverviewCard({ eyebrow, title, icon, metrics }) {
+  const total = metrics.reduce((sum, metric) => sum + metric.value, 0);
+  const colors = ["#2c87cc", "#23a579", "#f0a23a", "#7357c8", "#df6370", "#4b9b9b"];
+  let currentPercent = 0;
+  const segments = metrics.map((metric, index) => {
+    const start = currentPercent;
+    currentPercent += total > 0 ? (metric.value / total) * 100 : 0;
+    return `${metric.color || colors[index % colors.length]} ${start}% ${currentPercent}%`;
+  });
+  const chartBackground = total > 0
+    ? `conic-gradient(${segments.join(", ")})`
+    : "conic-gradient(#e9eff6 0% 100%)";
+
+  return (
+    <article className="admin-analytics-card admin-donut-card">
+      <div className="admin-panel-heading">
+        <div>
+          <span className="admin-panel-eyebrow">{eyebrow}</span>
+          <h2>{title}</h2>
+        </div>
+        <span className="admin-panel-icon">{createElement(icon, { size: 17, "aria-hidden": true })}</span>
+      </div>
+      <div className="admin-donut-content">
+        <div className="admin-donut-chart" role="img" aria-label={`${title} : ${total} au total`}>
+          <div className="admin-donut-ring" style={{ background: chartBackground }}>
+            <div className="admin-donut-center">
+              <strong>{total}</strong>
+              <span>au total</span>
+            </div>
+          </div>
+        </div>
+        <ul className="admin-donut-legend" aria-label="Détail des catégories">
+          {metrics.map((metric, index) => (
+            <li key={metric.label}>
+              <span
+                className="admin-donut-swatch"
+                style={{ backgroundColor: metric.color || colors[index % colors.length] }}
+                aria-hidden="true"
+              />
+              <span>{metric.label}</span>
+              <strong>{metric.value}</strong>
+            </li>
+          ))}
+        </ul>
       </div>
     </article>
   );
@@ -556,10 +713,16 @@ export default function AdminDashboard() {
     setSession(nextSession);
   };
 
-  const exportRegistrations = async (format) => {
+  const exportRegistrations = async (format, directory = "registrations") => {
     setExporting(true);
     setError("");
     let printWindow = null;
+    const isDirectory = directory === "members" || directory === "servants";
+    const exportName = directory === "servants"
+      ? "serviteurs"
+      : directory === "members"
+        ? "membres"
+        : "inscriptions";
     try {
       if (format === "pdf") {
         printWindow = window.open("", "_blank");
@@ -571,45 +734,61 @@ export default function AdminDashboard() {
         session.token,
         statusFilter,
         churchStatusFilter,
-        churchRoleFilter,
+        isDirectory && directory === "members" ? "all" : churchRoleFilter,
+        directory,
       );
       if (format === "pdf") {
-        printRegistrations(records, printWindow);
+        if (isDirectory) {
+          printDirectoryRecords(records, directory, printWindow);
+        } else {
+          printRegistrations(records, printWindow);
+        }
         return;
       }
 
-      const rows = records.map((registration) => ({
-        Nom: `${registration.first_name} ${registration.last_name}`,
-        Type: registration.registration_kind === "formation" ? "Formation" : "Inscription",
-        Activité: registration.activity_name,
-        Téléphone: registration.phone,
-        "E-mail": registration.email || "",
-        Adresse: registration.address || "",
-        Ville: registration.city || "",
-        Quartier: registration.district || "",
-        "Statut de traitement": LABELS[registration.status] ?? registration.status,
-        "Statut dans l’église": registration.church_status || "",
-        Fonction: registration.church_role || "",
-        "Date d’inscription": formatDate(registration.created_at),
-      }));
+      const rows = isDirectory
+        ? getDirectoryExportRows(records)
+        : records.map((registration) => ({
+          Nom: `${registration.first_name} ${registration.last_name}`,
+          Type: registration.registration_kind === "formation" ? "Formation" : "Inscription",
+          Activité: registration.activity_name,
+          Téléphone: registration.phone,
+          "E-mail": registration.email || "",
+          Adresse: registration.address || "",
+          Ville: registration.city || "",
+          Quartier: registration.district || "",
+          "Statut de traitement": LABELS[registration.status] ?? registration.status,
+          "Statut dans l’église": registration.church_status || "",
+          Fonction: registration.church_role || "",
+          "Date d’inscription": formatDate(registration.created_at),
+        }));
+      if (format === "word") {
+        downloadWordDirectory(records, directory);
+        return;
+      }
       const safeRows = rows.map((row) => Object.fromEntries(
         Object.entries(row).map(([key, value]) => [key, safeSpreadsheetValue(value)]),
       ));
-      const worksheet = XLSX.utils.json_to_sheet(safeRows);
-      worksheet["!cols"] = [
+      const worksheet = isDirectory
+        ? XLSX.utils.json_to_sheet(safeRows, { header: DIRECTORY_EXPORT_COLUMNS })
+        : XLSX.utils.json_to_sheet(safeRows);
+      worksheet["!cols"] = isDirectory ? [
+        { wch: 25 }, { wch: 28 }, { wch: 18 }, { wch: 28 }, { wch: 34 },
+        { wch: 24 }, { wch: 20 }, { wch: 24 }, { wch: 22 }, { wch: 20 },
+      ] : [
         { wch: 25 }, { wch: 16 }, { wch: 28 }, { wch: 18 }, { wch: 28 },
         { wch: 34 }, { wch: 20 }, { wch: 24 }, { wch: 18 }, { wch: 24 },
       ];
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Inscriptions");
-      XLSX.writeFile(workbook, `inscriptions-egc-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.utils.book_append_sheet(workbook, worksheet, isDirectory ? exportName : "Inscriptions");
+      XLSX.writeFile(workbook, `${exportName}-egc-${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (requestError) {
-      console.error("Registration export failed:", requestError);
+      console.error(`${exportName} export failed:`, requestError);
       printWindow?.close();
       if (requestError.status === 401) {
         expireSession();
       } else {
-        setError(requestError.message || "Impossible d’exporter les inscriptions.");
+        setError(requestError.message || `Impossible d’exporter les ${exportName}.`);
       }
     } finally {
       setExporting(false);
@@ -704,9 +883,7 @@ export default function AdminDashboard() {
   const roleMetrics = servantRoles
     .map((role) => ({ label: role, value: servantRoleCounts[role] ?? 0 }))
     .filter((metric) => metric.value > 0);
-  const maxMembershipCount = Math.max(...membershipStatusMetrics.map((metric) => metric.value), 1);
   const maxTrainingCount = Math.max(...trainingStatusMetrics.map((metric) => metric.value), 1);
-  const maxRoleCount = Math.max(...roleMetrics.map((metric) => metric.value), 1);
   const maxRegistrationCount = Math.max(pendingCount, confirmedCount, rejectedCount, 1);
   const registrationStatusMetrics = [
     { label: "À examiner", value: pendingCount, className: "is-pending" },
@@ -771,6 +948,34 @@ export default function AdminDashboard() {
             </label>
           )}
         </div>
+        {(directory === "members" || directory === "servants") && (
+          <div className="admin-export-actions" aria-label={`Exporter les ${directory === "servants" ? "serviteurs" : "membres"}`}>
+            <button
+              type="button"
+              className="admin-secondary-button"
+              onClick={() => exportRegistrations("xlsx", directory)}
+              disabled={exporting}
+            >
+              {exporting ? "Préparation…" : "Exporter Excel"}
+            </button>
+            <button
+              type="button"
+              className="admin-secondary-button"
+              onClick={() => exportRegistrations("word", directory)}
+              disabled={exporting}
+            >
+              {exporting ? "Préparation…" : "Exporter Word"}
+            </button>
+            <button
+              type="button"
+              className="admin-secondary-button"
+              onClick={() => exportRegistrations("pdf", directory)}
+              disabled={exporting}
+            >
+              {exporting ? "Préparation…" : "Exporter PDF"}
+            </button>
+          </div>
+        )}
         {loading && registrations.length === 0 ? (
           <p className="admin-empty">Chargement…</p>
         ) : registrations.length === 0 ? (
@@ -991,13 +1196,12 @@ export default function AdminDashboard() {
                   <strong>{membershipCounts.pending ?? 0}</strong>
                 </article>
               </section>
-              <section className="admin-overview-grid" aria-label="État des adhésions">
-                <StatusOverviewCard
+              <section className="admin-overview-grid admin-overview-single" aria-label="État des adhésions">
+                <DonutOverviewCard
                   eyebrow="MEMBRES"
                   title="État des adhésions"
                   icon={Users}
                   metrics={membershipStatusMetrics}
-                  maxValue={maxMembershipCount}
                 />
               </section>
             </>
@@ -1018,13 +1222,12 @@ export default function AdminDashboard() {
                 </article>
               </section>
               {roleMetrics.length > 0 && (
-                <section className="admin-overview-grid" aria-label="Répartition par fonction">
-                  <StatusOverviewCard
+                <section className="admin-overview-grid admin-overview-single" aria-label="Répartition par fonction">
+                  <DonutOverviewCard
                     eyebrow="ÉQUIPES DE SERVICE"
                     title="Serviteurs par fonction"
                     icon={UserRound}
                     metrics={roleMetrics}
-                    maxValue={maxRoleCount}
                   />
                 </section>
               )}
