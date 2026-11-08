@@ -298,6 +298,49 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
     WHERE activity_key = 'formation:chant' AND normalized_phone = '061234567'
   `).get().count, 1);
 
+  const trainingResult = await jsonRequest(
+    `/api/admin/registrations/${firstData.registration.id}`,
+    "PATCH",
+    { trainingStatus: "passed" },
+    adminHeaders,
+  );
+  assert.equal(trainingResult.status, 200);
+  const passedTrainings = await request(
+    "/api/admin/registrations?registrationKind=formation&status=confirmed&trainingStatus=passed",
+    { headers: adminHeaders },
+  );
+  assert.equal(passedTrainings.status, 200);
+  const passedTrainingData = await passedTrainings.json();
+  assert.equal(passedTrainingData.registrations.length, 1);
+  assert.equal(passedTrainingData.registrations[0].training_status, "passed");
+  assert.equal(passedTrainingData.summary.training.passed, 1);
+
+  const unconfirmedTrainingResult = await jsonRequest(
+    `/api/admin/registrations/${rejectedData.registration.id}`,
+    "PATCH",
+    { trainingStatus: "failed" },
+    adminHeaders,
+  );
+  assert.equal(unconfirmedTrainingResult.status, 409);
+
+  db.prepare(`
+    INSERT INTO registrations (
+      registration_kind, activity_key, activity_name, first_name, last_name,
+      phone, normalized_phone, answers_json, status, church_status, church_role
+    ) VALUES ('membership', 'membership:service-test', 'Inscription à l’église',
+              'Membre', 'Test', '060000001', '060000001', '{}',
+              'confirmed', 'En service', 'Accueil')
+  `).run();
+  const servants = await request(
+    "/api/admin/registrations?registrationKind=membership&status=confirmed&hasRole=true&churchRole=Accueil",
+    { headers: adminHeaders },
+  );
+  assert.equal(servants.status, 200);
+  const servantData = await servants.json();
+  assert.equal(servantData.registrations.length, 1);
+  assert.equal(servantData.registrations[0].church_role, "Accueil");
+  assert.equal(servantData.summary.servants.total, 1);
+
   const donation = {
     noms_prenoms: "Aline Mabiala",
     phone: "061234567",
@@ -334,9 +377,17 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
 
   const donations = await request("/api/admin/donations", { headers: adminHeaders });
   assert.equal(donations.status, 200);
-  const donationRows = (await donations.json()).donations;
+  const donationData = await donations.json();
+  const donationRows = donationData.donations;
   assert.equal(donationRows.length, 1);
   assert.equal(donationRows[0].status, "pending_provider");
+  assert.deepEqual(donationData.summary.donations, {
+    total: 1,
+    pending_provider: 1,
+    pending: 0,
+    succeeded: 0,
+    failed: 0,
+  });
 
   const forwardedIp = "198.51.100.10";
   for (let attempt = 0; attempt < 8; attempt += 1) {

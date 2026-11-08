@@ -10,9 +10,9 @@
     "preview": "vite preview",
     "android:sync": "npm run build && cap sync android",
     "android:open": "cap open android",
-    "server:dev": "npm --prefix server run dev",
-    "server:start": "npm --prefix server start",
-    "server:test": "npm --prefix server test"
+    "server:dev": "npm --prefix backend run dev",
+    "server:start": "npm --prefix backend start",
+    "server:test": "npm --prefix backend test"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.1.1",

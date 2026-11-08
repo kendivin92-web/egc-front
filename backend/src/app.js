@@ -36,6 +36,7 @@ const churchProfileSchema = z.object({
   status: z.enum(["pending", "confirmed", "rejected"]).optional(),
   churchStatus: z.string().trim().max(80).optional(),
   churchRole: z.string().trim().max(120).optional(),
+  trainingStatus: z.enum(["in_progress", "passed", "failed"]).optional(),
 }).strict();
 
 const announcementSchema = z.object({
@@ -212,6 +213,7 @@ function createRegistration(db, value, idempotencyKey) {
         SET registration_kind = ?, activity_name = ?, first_name = ?, last_name = ?,
             phone = ?, email = ?, address = ?, city = ?, district = ?,
             answers_json = ?, church_status = ?, church_role = ?, status = 'pending',
+            training_status = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(
@@ -227,6 +229,7 @@ function createRegistration(db, value, idempotencyKey) {
         answersJson,
         value.churchStatus,
         value.churchRole,
+        value.registrationKind === "formation" ? "in_progress" : "",
         existing.id,
       );
       registration = db.prepare("SELECT * FROM registrations WHERE id = ?").get(existing.id);
@@ -235,8 +238,8 @@ function createRegistration(db, value, idempotencyKey) {
         INSERT INTO registrations (
           registration_kind, activity_key, activity_name, first_name, last_name,
           phone, normalized_phone, email, address, city, district, answers_json
-          , church_status, church_role
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          , church_status, church_role, training_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         value.registrationKind,
         value.activityKey,
@@ -252,6 +255,7 @@ function createRegistration(db, value, idempotencyKey) {
         answersJson,
         value.churchStatus,
         value.churchRole,
+        value.registrationKind === "formation" ? "in_progress" : "",
       );
       registration = db.prepare("SELECT * FROM registrations WHERE id = ?").get(result.lastInsertRowid);
       created = true;
@@ -281,13 +285,52 @@ function getAdminSummary(db) {
       .all()
       .map((row) => [row.status, row.total]),
   );
-  const pendingDonations = db.prepare(`
-    SELECT COUNT(*) AS total FROM donation_intents WHERE status = 'pending_provider'
-  `).get().total;
+  const donations = {
+    total: 0,
+    pending_provider: 0,
+    pending: 0,
+    succeeded: 0,
+    failed: 0,
+  };
+  for (const row of db.prepare(`
+    SELECT status, COUNT(*) AS total FROM donation_intents GROUP BY status
+  `).all()) {
+    donations[row.status] = row.total;
+    donations.total += row.total;
+  }
+  const training = Object.fromEntries(
+    db.prepare(`
+      SELECT training_status, COUNT(*) AS total FROM registrations
+      WHERE registration_kind = 'formation' AND status = 'confirmed'
+      GROUP BY training_status
+    `).all().map((row) => [row.training_status, row.total]),
+  );
+  const memberships = Object.fromEntries(
+    db.prepare(`
+      SELECT status, COUNT(*) AS total FROM registrations
+      WHERE registration_kind = 'membership'
+      GROUP BY status
+    `).all().map((row) => [row.status, row.total]),
+  );
+  const servantRows = db.prepare(`
+    SELECT church_role, COUNT(*) AS total FROM registrations
+    WHERE registration_kind = 'membership' AND status = 'confirmed' AND church_role <> ''
+    GROUP BY church_role
+  `).all();
 
   return {
     registrations,
-    donations: { pending_provider: pendingDonations },
+    donations,
+    memberships,
+    servants: {
+      total: servantRows.reduce((total, row) => total + row.total, 0),
+      roles: Object.fromEntries(servantRows.map((row) => [row.church_role, row.total])),
+    },
+    training: {
+      in_progress: training.in_progress ?? 0,
+      passed: training.passed ?? 0,
+      failed: training.failed ?? 0,
+    },
   };
 }
 
@@ -774,6 +817,25 @@ export function createApp({
       response.status(400).json({ message: "Filtre de statut invalide." });
       return;
     }
+    const registrationKind = request.query.registrationKind;
+    if (registrationKind && !["membership", "formation"].includes(registrationKind)) {
+      response.status(400).json({ message: "Filtre de type d’inscription invalide." });
+      return;
+    }
+    const hasRole = request.query.hasRole;
+    if (hasRole !== undefined && !["true", "false"].includes(hasRole)) {
+      response.status(400).json({ message: "Filtre de fonction invalide." });
+      return;
+    }
+    const trainingStatus = request.query.trainingStatus;
+    if (trainingStatus && !["in_progress", "passed", "failed"].includes(trainingStatus)) {
+      response.status(400).json({ message: "Filtre de résultat de formation invalide." });
+      return;
+    }
+    if (trainingStatus && registrationKind !== "formation") {
+      response.status(400).json({ message: "Le résultat concerne uniquement les formations." });
+      return;
+    }
     const churchStatus = typeof request.query.churchStatus === "string"
       ? request.query.churchStatus.trim().slice(0, 80)
       : "";
@@ -794,6 +856,17 @@ export function createApp({
       filters.push("status = ?");
       values.push(status);
     }
+    if (registrationKind) {
+      filters.push("registration_kind = ?");
+      values.push(registrationKind);
+    }
+    if (hasRole === "true") {
+      filters.push("church_role <> ''");
+      if (!status) {
+        filters.push("status = 'confirmed'");
+      }
+    }
+    if (hasRole === "false") filters.push("church_role = ''");
     if (churchStatus) {
       filters.push("church_status = ?");
       values.push(churchStatus);
@@ -801,6 +874,10 @@ export function createApp({
     if (churchRole) {
       filters.push("church_role = ?");
       values.push(churchRole);
+    }
+    if (trainingStatus) {
+      filters.push("training_status = ?");
+      values.push(trainingStatus);
     }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
     const total = db.prepare(`SELECT COUNT(*) AS total FROM registrations ${where}`).get(...values).total;
@@ -810,7 +887,7 @@ export function createApp({
     const query = db.prepare(`
         SELECT id, registration_kind, activity_name, first_name, last_name, phone,
                email, address, city, district, status, church_status, church_role,
-               created_at, updated_at
+               training_status, created_at, updated_at
         FROM registrations ${where} ORDER BY id DESC LIMIT ? OFFSET ?
       `).all(...values, limit, offset);
     response.json({
@@ -832,7 +909,8 @@ export function createApp({
     const values = [];
     const statusOnly = parsed.data.status !== undefined
       && parsed.data.churchStatus === undefined
-      && parsed.data.churchRole === undefined;
+      && parsed.data.churchRole === undefined
+      && parsed.data.trainingStatus === undefined;
     if (parsed.data.status) {
       fields.push("status = ?");
       values.push(parsed.data.status);
@@ -845,6 +923,31 @@ export function createApp({
       fields.push("church_role = ?");
       values.push(parsed.data.churchRole);
     }
+    if (parsed.data.trainingStatus !== undefined) {
+      if (parsed.data.status !== undefined) {
+        response.status(400).json({ message: "Le résultat de formation se met à jour séparément." });
+        return;
+      }
+      const current = db.prepare("SELECT registration_kind, status FROM registrations WHERE id = ?").get(id);
+      if (!current) {
+        response.status(404).json({ message: "Inscription introuvable." });
+        return;
+      }
+      if (current.registration_kind !== "formation") {
+        response.status(400).json({ message: "Le résultat concerne uniquement les formations." });
+        return;
+      }
+      if (current.status !== "confirmed") {
+        response.status(409).json({ message: "Validez d’abord l’inscription à la formation." });
+        return;
+      }
+      fields.push("training_status = ?");
+      values.push(parsed.data.trainingStatus);
+    }
+    const trainingStatusOnly = parsed.data.trainingStatus !== undefined
+      && parsed.data.status === undefined
+      && parsed.data.churchStatus === undefined
+      && parsed.data.churchRole === undefined;
     if (!fields.length) {
       response.status(400).json({ message: "Aucune modification fournie." });
       return;
@@ -853,16 +956,28 @@ export function createApp({
     values.push(id);
     const updated = db.prepare(`
       UPDATE registrations SET ${fields.join(", ")}
-      WHERE id = ?${statusOnly ? " AND status = 'pending'" : ""}
+      WHERE id = ?${statusOnly
+        ? " AND status = 'pending'"
+        : trainingStatusOnly
+          ? " AND registration_kind = 'formation' AND status = 'confirmed'"
+          : ""}
     `).run(...values);
     if (updated.changes === 0) {
-      const current = db.prepare("SELECT id, status FROM registrations WHERE id = ?").get(id);
+      const current = db.prepare(
+        "SELECT id, status, registration_kind FROM registrations WHERE id = ?",
+      ).get(id);
       if (!current) {
         response.status(404).json({ message: "Inscription introuvable." });
         return;
       }
       if (statusOnly && current.status !== parsed.data.status) {
         response.status(409).json({ message: "Cette inscription a déjà été traitée." });
+        return;
+      }
+      if (trainingStatusOnly && (
+        current.registration_kind !== "formation" || current.status !== "confirmed"
+      )) {
+        response.status(409).json({ message: "L’inscription à la formation a changé de statut." });
         return;
       }
     }

@@ -352,7 +352,7 @@ const CATEGORIES = [
   
                   <p className="text-sm font-semibold text-stone-700">
   
-                    {selectedEvent.dateEvent}
+                    {selectedEvent.date || selectedEvent.dateEvent || "À confirmer"}
   
                   </p>
   
@@ -378,13 +378,13 @@ const CATEGORIES = [
   
                   <p className="text-xs text-amber-600 mb-1 uppercase tracking-wide">
   
-                    Heure
+                    Fréquence
   
                   </p>
   
                   <p className="text-sm font-semibold text-amber-800">
   
-                    {selectedEvent.heure}
+                    {selectedEvent.freq || "À confirmer"}
   
                   </p>
   
@@ -406,5 +406,4 @@ const CATEGORIES = [
   );
   
 }
-
 
