@@ -474,7 +474,7 @@ useEffect(() => {
 
   return (
     <div
-      className="app-shell"
+      className={`app-shell${hideLayout ? " app-shell-fullscreen" : ""}${location.pathname === "/admin" ? " app-shell-admin" : ""}`}
       style={{
         "--app-bg": C.bg,
         "--app-card": C.card,
@@ -554,7 +554,7 @@ useEffect(() => {
 
       {/* SCROLLABLE CONTENT */}
       <div
-        className="app-scroll"
+        className={`app-scroll${hideLayout ? " app-scroll-fullscreen" : ""}`}
   ref={scrollRef}
   onScroll={handleScroll}
   style={{

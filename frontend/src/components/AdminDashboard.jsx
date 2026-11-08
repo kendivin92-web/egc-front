@@ -8,14 +8,17 @@ import {
   FileText,
   GraduationCap,
   LogOut,
+  Menu,
   Megaphone,
   RefreshCw,
   ShieldCheck,
   Users,
   UserRound,
   Wallet,
+  X,
 } from "lucide-react";
 import AdminAnnouncements from "./AdminAnnouncements.jsx";
+import AdminDonutCard from "./AdminDonutCard.jsx";
 import adminLogo from "../assets/admin-logo.png";
 import { API_URL } from "../services/apiConfig.js";
 
@@ -442,55 +445,6 @@ function StatusOverviewCard({ eyebrow, title, icon, metrics, maxValue }) {
   );
 }
 
-function DonutOverviewCard({ eyebrow, title, icon, metrics }) {
-  const total = metrics.reduce((sum, metric) => sum + metric.value, 0);
-  const colors = ["#2c87cc", "#23a579", "#f0a23a", "#7357c8", "#df6370", "#4b9b9b"];
-  let currentPercent = 0;
-  const segments = metrics.map((metric, index) => {
-    const start = currentPercent;
-    currentPercent += total > 0 ? (metric.value / total) * 100 : 0;
-    return `${metric.color || colors[index % colors.length]} ${start}% ${currentPercent}%`;
-  });
-  const chartBackground = total > 0
-    ? `conic-gradient(${segments.join(", ")})`
-    : "conic-gradient(#e9eff6 0% 100%)";
-
-  return (
-    <article className="admin-analytics-card admin-donut-card">
-      <div className="admin-panel-heading">
-        <div>
-          <span className="admin-panel-eyebrow">{eyebrow}</span>
-          <h2>{title}</h2>
-        </div>
-        <span className="admin-panel-icon">{createElement(icon, { size: 17, "aria-hidden": true })}</span>
-      </div>
-      <div className="admin-donut-content">
-        <div className="admin-donut-chart" role="img" aria-label={`${title} : ${total} au total`}>
-          <div className="admin-donut-ring" style={{ background: chartBackground }}>
-            <div className="admin-donut-center">
-              <strong>{total}</strong>
-              <span>au total</span>
-            </div>
-          </div>
-        </div>
-        <ul className="admin-donut-legend" aria-label="Détail des catégories">
-          {metrics.map((metric, index) => (
-            <li key={metric.label}>
-              <span
-                className="admin-donut-swatch"
-                style={{ backgroundColor: metric.color || colors[index % colors.length] }}
-                aria-hidden="true"
-              />
-              <span>{metric.label}</span>
-              <strong>{metric.value}</strong>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </article>
-  );
-}
-
 function LoginForm({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -558,6 +512,7 @@ export default function AdminDashboard() {
   const [session, setSession] = useState(null);
   const sessionTokenRef = useRef(session?.token ?? null);
   const [section, setSection] = useState("registrations");
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [registrations, setRegistrations] = useState([]);
   const [donations, setDonations] = useState([]);
   const [summary, setSummary] = useState({ registrations: {}, donations: {} });
@@ -828,6 +783,7 @@ export default function AdminDashboard() {
   const updateRegistration = (registration, status) =>
     updateRegistrationProfile(registration, { status });
   const selectSection = (nextSection) => {
+    setMobileSidebarOpen(false);
     setError("");
     setNotice("");
     if (nextSection === section) {
@@ -895,6 +851,12 @@ export default function AdminDashboard() {
     { label: "À examiner", value: pendingCount, className: "is-pending" },
     { label: "Validées", value: confirmedCount, className: "is-confirmed" },
     { label: "Refusées", value: rejectedCount, className: "is-rejected" },
+  ];
+  const donationStatusMetrics = [
+    { label: "En attente", value: pendingDonationCount, className: "is-pending" },
+    { label: "Payés", value: donationCounts.succeeded ?? 0, className: "is-confirmed" },
+    { label: "Échoués", value: donationCounts.failed ?? 0, className: "is-rejected" },
+    { label: "En cours", value: donationCounts.pending ?? 0, className: "is-role" },
   ];
   const sectionCopy = {
     registrations: ["Inscriptions", "Consultez et traitez les demandes d’adhésion et de formation."],
@@ -1022,7 +984,15 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-shell">
-      <aside className="admin-sidebar">
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          className="admin-sidebar-overlay"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label="Fermer le menu d’administration"
+        />
+      )}
+      <aside className={`admin-sidebar${mobileSidebarOpen ? " is-open" : ""}`} id="admin-navigation">
         <div className="admin-brand">
           <span className="admin-brand-mark">
             <img src={adminLogo} alt="Logo de l’Église Glorieuse du Christ" />
@@ -1097,6 +1067,18 @@ export default function AdminDashboard() {
 
       <main className="admin-workspace">
         <header className="admin-topbar">
+          <button
+            type="button"
+            className="admin-mobile-menu-toggle"
+            onClick={() => setMobileSidebarOpen((open) => !open)}
+            aria-label={mobileSidebarOpen ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-expanded={mobileSidebarOpen}
+            aria-controls="admin-navigation"
+          >
+            {mobileSidebarOpen
+              ? <X size={19} aria-hidden="true" />
+              : <Menu size={19} aria-hidden="true" />}
+          </button>
           <div className="admin-breadcrumb">
             <span>EGC</span>
             <ChevronRight size={14} aria-hidden="true" />
@@ -1179,6 +1161,12 @@ export default function AdminDashboard() {
                   metrics={registrationStatusMetrics}
                   maxValue={maxRegistrationCount}
                 />
+                <AdminDonutCard
+                  eyebrow="SUIVI DES DEMANDES"
+                  title="Répartition des inscriptions"
+                  icon={FileText}
+                  metrics={registrationStatusMetrics}
+                />
               </section>
             </>
           )}
@@ -1202,10 +1190,17 @@ export default function AdminDashboard() {
                   <strong>{membershipCounts.pending ?? 0}</strong>
                 </article>
               </section>
-              <section className="admin-overview-grid admin-overview-single" aria-label="État des adhésions">
-                <DonutOverviewCard
+              <section className="admin-overview-grid" aria-label="État des adhésions">
+                <StatusOverviewCard
                   eyebrow="MEMBRES"
                   title="État des adhésions"
+                  icon={Users}
+                  metrics={membershipStatusMetrics}
+                  maxValue={Math.max(...membershipStatusMetrics.map((metric) => metric.value), 1)}
+                />
+                <AdminDonutCard
+                  eyebrow="MEMBRES"
+                  title="Adhésions validées"
                   icon={Users}
                   metrics={membershipStatusMetrics}
                 />
@@ -1228,7 +1223,7 @@ export default function AdminDashboard() {
                 </article>
               </section>
               <section className="admin-overview-grid admin-overview-single" aria-label="Répartition par fonction">
-                <DonutOverviewCard
+                <AdminDonutCard
                   eyebrow="ÉQUIPES DE SERVICE"
                   title="Serviteurs par fonction"
                   icon={UserRound}
@@ -1263,6 +1258,12 @@ export default function AdminDashboard() {
                   metrics={trainingStatusMetrics}
                   maxValue={maxTrainingCount}
                 />
+                <AdminDonutCard
+                  eyebrow="RÉSULTATS"
+                  title="Formations validées"
+                  icon={GraduationCap}
+                  metrics={trainingStatusMetrics}
+                />
               </section>
             </>
           )}
@@ -1277,7 +1278,13 @@ export default function AdminDashboard() {
                 </article>
               </section>
 
-              <section className="admin-overview-grid admin-overview-single" aria-label="État des dons">
+              <section className="admin-overview-grid" aria-label="État des dons">
+                <AdminDonutCard
+                  eyebrow="SOUTIEN"
+                  title="Répartition des dons"
+                  icon={Wallet}
+                  metrics={donationStatusMetrics}
+                />
                 <article className="admin-analytics-card admin-donation-card">
                   <div className="admin-panel-heading">
                     <div>

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { Megaphone } from "lucide-react";
+import AdminDonutCard from "./AdminDonutCard.jsx";
 import { API_URL } from "../services/apiConfig.js";
 
 const API = API_URL;
@@ -57,6 +59,15 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const publishedCount = announcements.filter((announcement) => announcement.published).length;
+  const carouselCount = announcements.filter((announcement) => announcement.showInCarousel).length;
+  const categoryMetrics = [...new Set(announcements.map((announcement) => announcement.type))]
+    .map((type) => ({
+      label: type,
+      value: announcements.filter((announcement) => announcement.type === type).length,
+    }))
+    .sort((left, right) => right.value - left.value);
+  const maxCategoryCount = Math.max(...categoryMetrics.map((metric) => metric.value), 1);
 
   const loadAnnouncements = useCallback(async () => {
     setLoading(true);
@@ -228,6 +239,68 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
 
       {error && <p className="admin-error" role="alert">{error}</p>}
       {notice && <p className="admin-notice" role="status">{notice}</p>}
+
+      <section className="admin-summary" aria-label="Résumé des annonces">
+        <article>
+          <span className="admin-summary-icon"><Megaphone size={17} aria-hidden="true" /></span>
+          <span>Total des annonces</span>
+          <strong>{announcements.length}</strong>
+        </article>
+        <article>
+          <span className="admin-summary-icon is-confirmed"><Megaphone size={17} aria-hidden="true" /></span>
+          <span>Publiées</span>
+          <strong>{publishedCount}</strong>
+        </article>
+        <article>
+          <span className="admin-summary-icon is-pending"><Megaphone size={17} aria-hidden="true" /></span>
+          <span>Brouillons</span>
+          <strong>{announcements.length - publishedCount}</strong>
+        </article>
+        <article>
+          <span className="admin-summary-icon is-donations"><Megaphone size={17} aria-hidden="true" /></span>
+          <span>Dans le carrousel</span>
+          <strong>{carouselCount}</strong>
+        </article>
+      </section>
+
+      <section className="admin-overview-grid" aria-label="Statistiques des annonces">
+        <article className="admin-analytics-card">
+          <div className="admin-panel-heading">
+            <div>
+              <span className="admin-panel-eyebrow">CONTENU</span>
+              <h2>Répartition par catégorie</h2>
+            </div>
+            <span className="admin-panel-icon"><Megaphone size={17} aria-hidden="true" /></span>
+          </div>
+          {categoryMetrics.length > 0 ? (
+            <div className="admin-status-bars">
+              {categoryMetrics.map((metric) => (
+                <div className="admin-status-row" key={metric.label}>
+                  <div className="admin-status-row-label">
+                    <span>{metric.label}</span>
+                    <strong>{metric.value}</strong>
+                  </div>
+                  <div className="admin-status-track" role="img" aria-label={`${metric.label} : ${metric.value}`}>
+                    <span className="is-role" style={{ width: `${(metric.value / maxCategoryCount) * 100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="admin-empty">Aucune catégorie à afficher.</p>
+          )}
+        </article>
+        <AdminDonutCard
+          eyebrow="PUBLICATION"
+          title="Annonces publiées"
+          icon={Megaphone}
+          metrics={[
+            { label: "Publiées", value: publishedCount, color: "#32815a" },
+            { label: "Brouillons", value: announcements.length - publishedCount, color: "#6eaedc" },
+            { label: "Dans le carrousel", value: carouselCount, color: "#438fc3" },
+          ]}
+        />
+      </section>
 
       <form className="admin-announcement-form" onSubmit={submit}>
         <h3>{editingId ? "Modifier l’annonce" : "Nouvelle annonce"}</h3>
