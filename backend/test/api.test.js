@@ -377,9 +377,17 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
 
   const donations = await request("/api/admin/donations", { headers: adminHeaders });
   assert.equal(donations.status, 200);
-  const donationRows = (await donations.json()).donations;
+  const donationData = await donations.json();
+  const donationRows = donationData.donations;
   assert.equal(donationRows.length, 1);
   assert.equal(donationRows[0].status, "pending_provider");
+  assert.deepEqual(donationData.summary.donations, {
+    total: 1,
+    pending_provider: 1,
+    pending: 0,
+    succeeded: 0,
+    failed: 0,
+  });
 
   const forwardedIp = "198.51.100.10";
   for (let attempt = 0; attempt < 8; attempt += 1) {

@@ -174,8 +174,13 @@ useEffect(() => {
            throw new Error("Format de réponse des annonces invalide.");
          }
 
-         setCarouselSlides(data.length > 0 ? data : EVENTS_LOCAL);
-         localStorage.setItem("annonces", JSON.stringify(data));
+         const slides = data.map((announcement) => ({
+           ...announcement,
+           titre: announcement.titre ?? announcement.title,
+           dateEvent: announcement.dateEvent ?? announcement.date ?? announcement.freq,
+         }));
+         setCarouselSlides(slides.length > 0 ? slides : EVENTS_LOCAL);
+         localStorage.setItem("annonces", JSON.stringify(slides));
        } catch (error) {
          if (!controller.signal.aborted) {
            console.error("Impossible d’actualiser les annonces :", error);
@@ -478,7 +483,7 @@ useEffect(() => {
 
   return (
     <div
-      className="app-shell"
+      className={`app-shell${hideLayout ? " app-shell-fullscreen" : ""}${location.pathname === "/admin" ? " app-shell-admin" : ""}`}
       style={{
         "--app-bg": C.bg,
         "--app-card": C.card,
@@ -558,14 +563,14 @@ useEffect(() => {
 
       {/* SCROLLABLE CONTENT */}
       <div
-        className="app-scroll"
+        className={`app-scroll${hideLayout ? " app-scroll-fullscreen" : ""}`}
   ref={scrollRef}
   onScroll={handleScroll}
   style={{
     flex: 1,
     minHeight: 0,
     overflowY: "auto",
-    padding:
+    padding: hideLayout ? 0 :
       activeNav === "LectureBible" ||
       activeNav === "PlanDeLecture" ||
       activeNav === "plan-lecture-personnalise"

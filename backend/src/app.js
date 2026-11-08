@@ -285,9 +285,19 @@ function getAdminSummary(db) {
       .all()
       .map((row) => [row.status, row.total]),
   );
-  const pendingDonations = db.prepare(`
-    SELECT COUNT(*) AS total FROM donation_intents WHERE status = 'pending_provider'
-  `).get().total;
+  const donations = {
+    total: 0,
+    pending_provider: 0,
+    pending: 0,
+    succeeded: 0,
+    failed: 0,
+  };
+  for (const row of db.prepare(`
+    SELECT status, COUNT(*) AS total FROM donation_intents GROUP BY status
+  `).all()) {
+    donations[row.status] = row.total;
+    donations.total += row.total;
+  }
   const training = Object.fromEntries(
     db.prepare(`
       SELECT training_status, COUNT(*) AS total FROM registrations
@@ -310,7 +320,7 @@ function getAdminSummary(db) {
 
   return {
     registrations,
-    donations: { pending_provider: pendingDonations },
+    donations,
     memberships,
     servants: {
       total: servantRows.reduce((total, row) => total + row.total, 0),

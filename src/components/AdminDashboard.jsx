@@ -8,14 +8,17 @@ import {
   FileText,
   GraduationCap,
   LogOut,
+  Menu,
   Megaphone,
   RefreshCw,
   ShieldCheck,
   Users,
   UserRound,
   Wallet,
+  X,
 } from "lucide-react";
 import AdminAnnouncements from "./AdminAnnouncements.jsx";
+import AdminDonutCard from "./AdminDonutCard.jsx";
 import adminLogo from "../assets/admin-logo.png";
 import { API_URL } from "../services/apiConfig.js";
 
@@ -401,6 +404,7 @@ export default function AdminDashboard() {
   const [session, setSession] = useState(() => readCache(ADMIN_SESSION_KEY));
   const sessionTokenRef = useRef(session?.token ?? null);
   const [section, setSection] = useState("registrations");
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [registrations, setRegistrations] = useState([]);
   const [donations, setDonations] = useState([]);
   const [summary, setSummary] = useState({ registrations: {}, donations: {} });
@@ -646,6 +650,7 @@ export default function AdminDashboard() {
   const updateRegistration = (registration, status) =>
     updateRegistrationProfile(registration, { status });
   const selectSection = (nextSection) => {
+    setMobileSidebarOpen(false);
     setError("");
     setNotice("");
     if (nextSection === section) {
@@ -686,6 +691,7 @@ export default function AdminDashboard() {
   const membershipCounts = summary.memberships ?? {};
   const memberCount = Object.values(membershipCounts)
     .reduce((total, count) => total + Number(count || 0), 0);
+  const confirmedMemberCount = membershipCounts.confirmed ?? 0;
   const servantSummary = summary.servants ?? {};
   const servantCount = servantSummary.total ?? 0;
   const servantRoleCounts = servantSummary.roles ?? {};
@@ -701,6 +707,8 @@ export default function AdminDashboard() {
     { label: TRAINING_STATUS_LABELS.passed, value: trainingCounts.passed ?? 0, className: "is-confirmed" },
     { label: TRAINING_STATUS_LABELS.failed, value: trainingCounts.failed ?? 0, className: "is-rejected" },
   ];
+  const trainingTotalCount = trainingStatusMetrics
+    .reduce((total, metric) => total + metric.value, 0);
   const roleMetrics = servantRoles
     .map((role) => ({ label: role, value: servantRoleCounts[role] ?? 0 }))
     .filter((metric) => metric.value > 0);
@@ -712,6 +720,14 @@ export default function AdminDashboard() {
     { label: "À examiner", value: pendingCount, className: "is-pending" },
     { label: "Validées", value: confirmedCount, className: "is-confirmed" },
     { label: "Refusées", value: rejectedCount, className: "is-rejected" },
+  ];
+  const donationTotalCount = donationCounts.total
+    ?? Object.values(donationCounts).reduce((total, count) => total + Number(count || 0), 0);
+  const donationStatusMetrics = [
+    { label: "En attente", value: pendingDonationCount, className: "is-pending" },
+    { label: "Payés", value: donationCounts.succeeded ?? 0, className: "is-confirmed" },
+    { label: "Échoués", value: donationCounts.failed ?? 0, className: "is-rejected" },
+    { label: "En cours", value: donationCounts.pending ?? 0, className: "is-role" },
   ];
   const sectionCopy = {
     registrations: ["Inscriptions", "Consultez et traitez les demandes d’adhésion et de formation."],
@@ -811,7 +827,15 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-shell">
-      <aside className="admin-sidebar">
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          className="admin-sidebar-overlay"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label="Fermer le menu d’administration"
+        />
+      )}
+      <aside className={`admin-sidebar${mobileSidebarOpen ? " is-open" : ""}`} id="admin-navigation">
         <div className="admin-brand">
           <span className="admin-brand-mark">
             <img src={adminLogo} alt="Logo de l’Église Glorieuse du Christ" />
@@ -886,6 +910,18 @@ export default function AdminDashboard() {
 
       <main className="admin-workspace">
         <header className="admin-topbar">
+          <button
+            type="button"
+            className="admin-mobile-menu-toggle"
+            onClick={() => setMobileSidebarOpen((open) => !open)}
+            aria-label={mobileSidebarOpen ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-expanded={mobileSidebarOpen}
+            aria-controls="admin-navigation"
+          >
+            {mobileSidebarOpen
+              ? <X size={19} aria-hidden="true" />
+              : <Menu size={19} aria-hidden="true" />}
+          </button>
           <div className="admin-breadcrumb">
             <span>EGC</span>
             <ChevronRight size={14} aria-hidden="true" />
@@ -968,6 +1004,14 @@ export default function AdminDashboard() {
                   metrics={registrationStatusMetrics}
                   maxValue={maxRegistrationCount}
                 />
+                <AdminDonutCard
+                  eyebrow="SUIVI DES DEMANDES"
+                  title="Taux de validation"
+                  value={confirmedCount}
+                  total={totalRegistrationCount}
+                  centerLabel="validées"
+                  metrics={registrationStatusMetrics}
+                />
               </section>
             </>
           )}
@@ -999,6 +1043,14 @@ export default function AdminDashboard() {
                   metrics={membershipStatusMetrics}
                   maxValue={maxMembershipCount}
                 />
+                <AdminDonutCard
+                  eyebrow="SUIVI DES MEMBRES"
+                  title="Taux d’adhésions validées"
+                  value={confirmedMemberCount}
+                  total={memberCount}
+                  centerLabel="validées"
+                  metrics={membershipStatusMetrics}
+                />
               </section>
             </>
           )}
@@ -1017,8 +1069,8 @@ export default function AdminDashboard() {
                   <strong>{roleMetrics.length}</strong>
                 </article>
               </section>
-              {roleMetrics.length > 0 && (
-                <section className="admin-overview-grid" aria-label="Répartition par fonction">
+              <section className="admin-overview-grid" aria-label="Répartition par fonction">
+                {roleMetrics.length > 0 && (
                   <StatusOverviewCard
                     eyebrow="ÉQUIPES DE SERVICE"
                     title="Serviteurs par fonction"
@@ -1026,8 +1078,23 @@ export default function AdminDashboard() {
                     metrics={roleMetrics}
                     maxValue={maxRoleCount}
                   />
-                </section>
-              )}
+                )}
+                <AdminDonutCard
+                  eyebrow="ENGAGEMENT"
+                  title="Membres en service"
+                  value={servantCount}
+                  total={confirmedMemberCount}
+                  centerLabel="en service"
+                  metrics={[
+                    { label: "Avec une fonction", value: servantCount, className: "is-confirmed" },
+                    {
+                      label: "Sans fonction",
+                      value: Math.max(confirmedMemberCount - servantCount, 0),
+                      className: "is-pending",
+                    },
+                  ]}
+                />
+              </section>
             </>
           )}
 
@@ -1056,6 +1123,14 @@ export default function AdminDashboard() {
                   metrics={trainingStatusMetrics}
                   maxValue={maxTrainingCount}
                 />
+                <AdminDonutCard
+                  eyebrow="RÉSULTATS"
+                  title="Formations validées"
+                  value={trainingCounts.passed ?? 0}
+                  total={trainingTotalCount}
+                  centerLabel="validées"
+                  metrics={trainingStatusMetrics}
+                />
               </section>
             </>
           )}
@@ -1063,14 +1138,30 @@ export default function AdminDashboard() {
           {section === "donations" && (
             <>
               <section className="admin-summary" aria-label="Résumé des dons">
-                <article>
-                  <span className="admin-summary-icon is-donations"><Wallet size={17} aria-hidden="true" /></span>
-                  <span>Dons en attente d’activation</span>
-                  <strong>{pendingDonationCount}</strong>
-                </article>
+                {donationStatusMetrics.map((metric) => (
+                  <article key={metric.label}>
+                    <span className={`admin-summary-icon ${metric.className || "is-donations"}`}>
+                      {metric.className === "is-confirmed"
+                        ? <CheckCircle2 size={17} aria-hidden="true" />
+                        : metric.className === "is-rejected"
+                          ? <ShieldCheck size={17} aria-hidden="true" />
+                          : <Wallet size={17} aria-hidden="true" />}
+                    </span>
+                    <span>{metric.label}</span>
+                    <strong>{metric.value}</strong>
+                  </article>
+                ))}
               </section>
 
-              <section className="admin-overview-grid admin-overview-single" aria-label="État des dons">
+              <section className="admin-overview-grid" aria-label="État des dons">
+                <AdminDonutCard
+                  eyebrow="SOUTIEN"
+                  title="Dons encaissés"
+                  value={donationCounts.succeeded ?? 0}
+                  total={donationTotalCount}
+                  centerLabel="payés"
+                  metrics={donationStatusMetrics}
+                />
                 <article className="admin-analytics-card admin-donation-card">
                   <div className="admin-panel-heading">
                     <div>
