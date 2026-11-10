@@ -6,6 +6,7 @@ export default function LectureBible({ dark }) {
   const [selectedTestament, setSelectedTestament] = useState(null); // 'ancien' ou 'nouveau'
   const [selectedBook, setSelectedBook] = useState(null); // Nom du livre
   const [selectedChapter, setSelectedChapter] = useState(null); // Numéro du chapitre
+  const [searchTerm, setSearchTerm] = useState("");
   // Vue Agrandie & Favoris (Chargement direct depuis le localStorage)
   const [selectedVerseIndex, setSelectedVerseIndex] = useState(null);
   const [favorites, setFavorites] = useState(() => {
@@ -56,6 +57,27 @@ export default function LectureBible({ dark }) {
   // Séparation 39 livres (Ancien) et 27 livres (Nouveau)
   const ancienBooks = useMemo(() => allBookNames.slice(0, 39), [allBookNames]);
   const nouveauBooks = useMemo(() => allBookNames.slice(39), [allBookNames]);
+  const searchResults = useMemo(() => {
+    const query = searchTerm.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
+    if (query.length < 2) return [];
+
+    const results = [];
+    for (const [book, chapters] of Object.entries(booksMap)) {
+      for (const [chapter, verses] of Object.entries(chapters)) {
+        for (const [index, verse] of verses.entries()) {
+          const normalizedText = verse.text
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLocaleLowerCase("fr");
+          if (normalizedText.includes(query)) {
+            results.push({ book, chapter, index, verse });
+            if (results.length === 30) return results;
+          }
+        }
+      }
+    }
+    return results;
+  }, [booksMap, searchTerm]);
   const currentBooksList =
     selectedTestament === "ancien"
       ? ancienBooks
@@ -228,6 +250,75 @@ export default function LectureBible({ dark }) {
       {/* --- ONGLET BIBLE --- */}
       {selectedTab === "bible" && (
         <>
+          <div style={{ marginBottom: "20px" }}>
+            <label
+              htmlFor="bible-verse-search"
+              style={{ display: "block", fontWeight: "bold", marginBottom: "8px" }}
+            >
+              Rechercher un verset par mot-clé
+            </label>
+            <input
+              id="bible-verse-search"
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Ex. : amour, foi, espérance"
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "8px",
+                border: dark ? "1px solid #374151" : "1px solid #d1d5db",
+                backgroundColor: dark ? "#1f2937" : "#ffffff",
+                color: dark ? "#ffffff" : "#1f2937",
+              }}
+            />
+            {searchTerm.trim().length >= 2 && (
+              searchResults.length > 0 ? (
+                <div
+                  aria-label="Résultats de recherche"
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                    maxHeight: "320px",
+                    overflowY: "auto",
+                    marginTop: "10px",
+                  }}
+                >
+                  {searchResults.map(({ book, chapter, index, verse }) => (
+                    <button
+                      key={`${book}-${chapter}-${verse.verse}`}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTestament(allBookNames.indexOf(book) < 39 ? "ancien" : "nouveau");
+                        setSelectedBook(book);
+                        setSelectedChapter(chapter);
+                        setSelectedVerseIndex(index);
+                      }}
+                      style={{
+                        padding: "12px",
+                        borderRadius: "8px",
+                        border: dark ? "1px solid #374151" : "1px solid #e5e7eb",
+                        backgroundColor: dark ? "#1f2937" : "#f9fafb",
+                        color: dark ? "#ffffff" : "#1f2937",
+                        textAlign: "left",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <strong style={{ display: "block", color: "#d97706", marginBottom: "4px" }}>
+                        {book} {chapter}:{verse.verse}
+                      </strong>
+                      {verse.text}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: dark ? "#9ca3af" : "#6b7280", margin: "10px 0 0" }}>
+                  Aucun verset trouvé pour « {searchTerm.trim()} ».
+                </p>
+              )
+            )}
+          </div>
           {/* VUE 1 : Testaments */}
           {!selectedTestament && (
             <div style={{ textAlign: "center" }}>
