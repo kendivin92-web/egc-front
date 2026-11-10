@@ -6,7 +6,9 @@ import {
   FaMapMarkerAlt,
   FaEnvelope,
   FaPhone,
+  FaDownload,
 } from "react-icons/fa";
+import { Capacitor } from "@capacitor/core";
 
 export default function Footer({ dark }) {
   const C = {
@@ -140,6 +142,29 @@ export default function Footer({ dark }) {
                   +242 06 752 74 74
                 </a>
               </div>
+              {!Capacitor.isNativePlatform() && (
+                <a
+                  href="/app-egc.apk"
+                  download="EGC-Android.apk"
+                  style={{
+                    display: "inline-flex",
+                    width: "fit-content",
+                    alignItems: "center",
+                    gap: 9,
+                    marginTop: 6,
+                    padding: "11px 15px",
+                    borderRadius: 12,
+                    background: C.accent,
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    textDecoration: "none",
+                  }}
+                >
+                  <FaDownload size={15} />
+                  Télécharger l’application Android
+                </a>
+              )}
             </div>
           </div>
 
