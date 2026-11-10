@@ -366,15 +366,15 @@ export function createApp({
 
   const adminRows = db.prepare("SELECT id, email, password_hash FROM admins").all();
   const dummyPasswordHash = bcrypt.hashSync(randomUUID(), 12);
-  const allowedOrigins = new Set(
-    (publicOrigins ?? [
+  const allowedOrigins = new Set([
+    ...(publicOrigins ?? [
       "http://localhost:3000",
       "http://127.0.0.1:3000",
-      "https://localhost",
-      "http://localhost",
-      "capacitor://localhost",
-    ]).map((origin) => origin.trim()).filter(Boolean),
-  );
+    ]),
+    "capacitor://localhost",
+    "https://localhost",
+    "http://localhost",
+  ].map((origin) => origin.trim()).filter(Boolean));
 
   const app = express();
   app.disable("x-powered-by");

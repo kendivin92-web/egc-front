@@ -70,6 +70,18 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
     allowedPreflight.headers.get("access-control-allow-origin"),
     "https://egliseglorieuseduchrist.up.railway.app",
   );
+  for (const origin of ["capacitor://localhost", "https://localhost", "http://localhost"]) {
+    const nativePreflight = await request("/api/admin/auth/login", {
+      method: "OPTIONS",
+      headers: {
+        Origin: origin,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type",
+      },
+    });
+    assert.equal(nativePreflight.status, 204);
+    assert.equal(nativePreflight.headers.get("access-control-allow-origin"), origin);
+  }
   const blockedPreflight = await request("/api/annonces", {
     method: "OPTIONS",
     headers: {
