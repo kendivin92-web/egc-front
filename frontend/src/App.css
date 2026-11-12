@@ -1814,11 +1814,18 @@ html[data-theme="dark"] .personalized-plan-check input {
 }
 
 .app-shell-fullscreen {
-  min-height: 100dvh !important;
-  height: 100dvh !important;
+  min-height: 100vh !important;
+  height: 100vh !important;
   margin: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
+}
+
+@supports (height: 100dvh) {
+  .app-shell-fullscreen {
+    min-height: 100dvh !important;
+    height: 100dvh !important;
+  }
 }
 
 .app-shell-admin {
