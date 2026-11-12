@@ -26,7 +26,7 @@ const C = {
     useEffect(() => {
       const fetchFideles = async () => {
         try {
-          const token = localStorage.getItem("token");console.log("TOKEN =", token);
+          const token = localStorage.getItem("token");
           const res = await fetch(`${API}/api/annonces`, {
             headers: { Authorization: `Bearer ${token}` },
           });
