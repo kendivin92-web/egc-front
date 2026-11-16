@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { lazy, Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { Navigate, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar } from '@capacitor/status-bar';
@@ -318,6 +318,9 @@ const cacheAnnouncementImages = (announcements) => {
 };
 
 export default function EgliseFoiVictoire() {
+  const isAndroidApp =
+    Capacitor.getPlatform() === "android" ||
+    (import.meta.env.DEV && new URLSearchParams(window.location.search).get("apkPreview") === "1");
   const { isOnline } = useNetworkStatus();
   const [dark, setDark] = useState(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -341,12 +344,25 @@ export default function EgliseFoiVictoire() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [slide, setSlide] = useState(0);
   const [panelTransitionReady, setPanelTransitionReady] = useState(false);
+  const [isAndroidCompact, setIsAndroidCompact] = useState(
+    () => isAndroidApp && window.matchMedia("(max-width: 600px)").matches,
+  );
+  const [compactPurposePhase, setCompactPurposePhase] = useState("question");
   const [navVisible, setNavVisible] = useState(true);
   const [activeFeature, setActiveFeature] = useState(null);
   const [futureVersionsOpen, setFutureVersionsOpen] = useState(false);
   const lastScrollY = useRef(0);
   const scrollRef = useRef(null);
   const touchStartX = useRef(null);
+
+  useEffect(() => {
+    if (!isAndroidApp) return undefined;
+    const compactScreen = window.matchMedia("(max-width: 600px)");
+    const updateCompactScreen = () => setIsAndroidCompact(compactScreen.matches);
+    updateCompactScreen();
+    compactScreen.addEventListener("change", updateCompactScreen);
+    return () => compactScreen.removeEventListener("change", updateCompactScreen);
+  }, [isAndroidApp]);
 
   useEffect(() => {
     let active = true;
@@ -509,10 +525,29 @@ useEffect(() => {
   const activeAnnouncement = isPurposeMode ? null : visibleSlides[activeCarouselSlideIndex];
 
   useEffect(() => {
+    if (isAndroidCompact) return undefined;
     setPanelTransitionReady(false);
     const frame = window.requestAnimationFrame(() => setPanelTransitionReady(true));
     return () => window.cancelAnimationFrame(frame);
-  }, [carouselMode, carouselSlides, slide]);
+  }, [carouselMode, carouselSlides, slide, isAndroidCompact]);
+
+  useLayoutEffect(() => {
+    if (!isAndroidCompact) return undefined;
+    setPanelTransitionReady(false);
+    const frame = window.requestAnimationFrame(() => setPanelTransitionReady(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [carouselMode, carouselSlides, slide, isAndroidCompact]);
+
+  useLayoutEffect(() => {
+    if (!isAndroidCompact || !isPurposeMode) return undefined;
+    setCompactPurposePhase("question");
+    const clearQuestion = window.setTimeout(() => setCompactPurposePhase("clearing"), 1600);
+    const showSolution = window.setTimeout(() => setCompactPurposePhase("solution"), 1800);
+    return () => {
+      window.clearTimeout(clearQuestion);
+      window.clearTimeout(showSolution);
+    };
+  }, [isAndroidCompact, isPurposeMode, activeCarouselSlideIndex]);
 
   // Auto-advance carousel
 
@@ -562,7 +597,7 @@ useEffect(() => {
       </section>
 
       <section
-        className="home-hero"
+        className={`home-hero${isAndroidCompact ? " home-hero--android-compact" : ""}`}
         aria-label="Découvrir la plateforme et les annonces"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
@@ -614,23 +649,36 @@ useEffect(() => {
                 </span>
                 <span className="home-hero-intro-eyebrow">{activePlatformDemo.eyebrow}</span>
               </div>
-              <h2>{activePlatformDemo.title}</h2>
-              <p>{activePlatformDemo.description}</p>
-              {activePlatformDemo.path ? (
-                <button
-                  className="home-hero-content-action"
-                  type="button"
-                  onClick={() => navigate(activePlatformDemo.path)}
+              {(!isAndroidCompact || compactPurposePhase !== "clearing") && (
+                <h2
+                  className={
+                    isAndroidCompact && compactPurposePhase === "solution"
+                      ? "home-hero-mobile-answer"
+                      : undefined
+                  }
                 >
-                  {activePlatformDemo.actionLabel}
-                  <Icon name="chevronRight" size={17} color="#17233b" />
-                </button>
-              ) : (
-                <a className="home-hero-content-action" href={activePlatformDemo.href}>
-                  {activePlatformDemo.actionLabel}
-                  <Icon name="phone" size={17} color="#17233b" />
-                </a>
+                  {isAndroidCompact && compactPurposePhase === "solution"
+                    ? activePlatformDemo.description
+                    : activePlatformDemo.title}
+                </h2>
               )}
+              {!isAndroidCompact && <p>{activePlatformDemo.description}</p>}
+              {(!isAndroidCompact || compactPurposePhase === "solution") &&
+                (activePlatformDemo.path ? (
+                  <button
+                    className="home-hero-content-action"
+                    type="button"
+                    onClick={() => navigate(activePlatformDemo.path)}
+                  >
+                    {activePlatformDemo.actionLabel}
+                    <Icon name="chevronRight" size={17} color="#17233b" />
+                  </button>
+                ) : (
+                  <a className="home-hero-content-action" href={activePlatformDemo.href}>
+                    {activePlatformDemo.actionLabel}
+                    <Icon name="phone" size={17} color="#17233b" />
+                  </a>
+                ))}
             </div>
             <span className="home-hero-intro-orbit" aria-hidden="true" />
           </article>

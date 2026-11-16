@@ -2161,6 +2161,100 @@ html[data-theme="dark"] .personalized-plan-check input {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .home-hero.home-hero--android-compact {
+    min-height: 220px;
+    border-radius: 16px;
+  }
+
+  .home-hero--android-compact .home-hero-intro {
+    padding: 32px 10px 8px;
+  }
+
+  .home-hero--android-compact .home-hero-intro-kicker {
+    gap: 4px;
+  }
+
+  .home-hero--android-compact .home-hero-intro-icon,
+  .home-hero--android-compact .home-hero-empty-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+  }
+
+  .home-hero--android-compact .home-hero-intro-icon svg,
+  .home-hero--android-compact .home-hero-empty-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .home-hero--android-compact .home-hero-intro-eyebrow {
+    padding: 5px 8px;
+    font-size: 8px;
+    letter-spacing: 0.14em;
+  }
+
+  .home-hero--android-compact .home-hero-intro-content h2 {
+    margin: 4px auto 3px;
+    font-size: clamp(19px, 4.8vw, 21px);
+    line-height: 1.04;
+  }
+
+  .home-hero--android-compact .home-hero-intro-content p {
+    display: -webkit-box;
+    max-width: 34ch;
+    margin: 0 auto 4px;
+    overflow: hidden;
+    font-size: 9px;
+    line-height: 1.2;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .home-hero--android-compact .home-hero-intro-content h2.home-hero-mobile-answer {
+    display: -webkit-box;
+    max-width: 34ch;
+    margin: 4px auto;
+    overflow: hidden;
+    font-size: clamp(14px, 3.8vw, 17px);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .home-hero--android-compact .home-hero-content-action {
+    min-height: 30px;
+    padding: 0 9px;
+    font-size: 9px;
+  }
+
+  .home-hero--android-compact .home-hero-controls {
+    display: none;
+  }
+
+  .home-hero--android-compact .home-hero-dots {
+    right: 10px;
+    bottom: 8px;
+    gap: 4px;
+  }
+
+  .home-hero--android-compact .home-hero-dots button {
+    width: 5px;
+    height: 5px;
+  }
+
+  .home-hero--android-compact .home-hero-dots button.is-active {
+    width: 14px;
+  }
+
+  .home-hero--android-compact .home-hero-announcement-speaker {
+    bottom: 7px;
+    left: 10px;
+    max-width: calc(100% - 96px);
+    padding: 4px 7px;
+    font-size: 9px;
+  }
 }
 
 @media (max-width: 380px) {
@@ -2195,6 +2289,66 @@ html[data-theme="dark"] .personalized-plan-check input {
 
   .home-hero-intro-content p {
     margin-bottom: 15px;
+  }
+
+  .home-hero.home-hero--android-compact {
+    min-height: 190px;
+    border-radius: 14px;
+  }
+
+  .home-hero--android-compact .home-hero-intro-icon,
+  .home-hero--android-compact .home-hero-empty-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+  }
+
+  .home-hero--android-compact .home-hero-intro-icon svg,
+  .home-hero--android-compact .home-hero-empty-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .home-hero--android-compact .home-hero-intro-eyebrow {
+    padding: 4px 7px;
+    font-size: 7px;
+    letter-spacing: 0.12em;
+  }
+
+  .home-hero--android-compact .home-hero-intro-content h2 {
+    margin: 2px auto;
+    font-size: clamp(16px, 4.3vw, 17px);
+    line-height: 1.02;
+  }
+
+  .home-hero--android-compact .home-hero-intro-content p {
+    display: -webkit-box;
+    max-width: 32ch;
+    margin-bottom: 3px;
+    font-size: 8px;
+    line-height: 1.15;
+    -webkit-line-clamp: 2;
+  }
+
+  .home-hero--android-compact .home-hero-intro-content h2.home-hero-mobile-answer {
+    max-width: 32ch;
+    font-size: clamp(13px, 3.8vw, 15px);
+  }
+
+  .home-hero--android-compact .home-hero-intro {
+    padding: 28px 8px 7px;
+  }
+
+  .home-hero--android-compact .home-hero-content-action {
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 9px;
+  }
+
+  .home-hero--android-compact .home-hero-announcement-speaker {
+    max-width: calc(100% - 88px);
+    padding: 3px 6px;
+    font-size: 8px;
   }
 
   .home-hero-announcement {
