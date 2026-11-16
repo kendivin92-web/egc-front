@@ -651,51 +651,17 @@ useEffect(() => {
                 event.currentTarget.src = churchImage;
               }}
             />
-            <div className="home-hero-announcement-shade" />
-            <div className="home-hero-announcement-content">
-              <span className="home-hero-intro-eyebrow">
-                {activeAnnouncement.type || "ANNONCE"} · À LA UNE
+            {activeAnnouncement.orateur && (
+              <span className="home-hero-announcement-speaker" aria-hidden="true">
+                {activeAnnouncement.orateur}
               </span>
-              <h2>{activeAnnouncement.title || activeAnnouncement.titre}</h2>
-              <p className="home-hero-announcement-meta">
-                {[activeAnnouncement.dateEvent || activeAnnouncement.date || activeAnnouncement.freq,
-                  activeAnnouncement.lieu].filter(Boolean).join(" · ")}
-              </p>
-              {activeAnnouncement.orateur && (
-                <div className="home-hero-speaker">
-                  {activeAnnouncement.orateurImage ? (
-                    <img
-                      src={getImageUrl(activeAnnouncement.orateurImage)}
-                      alt=""
-                      onError={(event) => {
-                        event.currentTarget.onerror = null;
-                        event.currentTarget.style.display = "none";
-                      }}
-                    />
-                  ) : (
-                    <span className="home-hero-speaker-initial" aria-hidden="true">
-                      {activeAnnouncement.orateur.trim().charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                  <span>
-                    <small>ORATEUR</small>
-                    <strong>{activeAnnouncement.orateur}</strong>
-                  </span>
-                </div>
-              )}
-              <p className="home-hero-announcement-description">
-                {(activeAnnouncement.contenu || "").slice(0, 150)}
-                {(activeAnnouncement.contenu || "").length > 150 ? "…" : ""}
-              </p>
-              <button
-                className="home-hero-content-action"
-                type="button"
-                onClick={() => navigate("/events")}
-              >
-                Découvrir l’annonce
-                <Icon name="chevronRight" size={17} color="#17233b" />
-              </button>
-            </div>
+            )}
+            <button
+              className="home-hero-announcement-open"
+              type="button"
+              aria-label={`Voir l’annonce dans les événements : ${activeAnnouncement.title || activeAnnouncement.titre || "Annonce"}`}
+              onClick={() => navigate("/events")}
+            />
           </article>
         ) : !isPurposeMode ? (
           <div

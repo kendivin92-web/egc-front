@@ -32,7 +32,7 @@ android {
         applicationId "com.egc.eglise"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
+        versionCode 6
         versionName "1.3"
         buildConfigField "String", "EGC_API_URL", "\"${nativeApiUrl}\""
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
