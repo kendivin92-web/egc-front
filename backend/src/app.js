@@ -14,6 +14,7 @@ import { parseChannelVideos, parseLiveVideo, parseSundayVideos } from "./youtube
 
 const DEFAULT_YOUTUBE_CHANNEL_ID = "UCQi00Q-CJ5mGtbeMnrlqc4Q";
 const FALLBACK_VIDEO_IDS = ["-L5muQwfe28", "5e6qmOq2spA", "_SN_Nf5rjBg", "MHBnX57oivs"];
+const MAX_CAROUSEL_ANNOUNCEMENTS = 7;
 
 const registrationAnswerSchema = z.record(
   z.string().min(1).max(60),
@@ -44,6 +45,8 @@ const announcementSchema = z.object({
   type: z.enum(["Culte", "Formation", "Séminaire", "Prière", "Spéciaux", "Retraite"]),
   date: z.string().trim().max(80).default(""),
   lieu: z.string().trim().max(120).default(""),
+  orateur: z.string().trim().max(120).default(""),
+  orateurImage: z.string().regex(/^\/uploads\/[0-9a-f-]+\.(png|jpg|webp)$/i).or(z.literal("")).default(""),
   freq: z.string().trim().max(80).default(""),
   contenu: z.string().trim().min(1).max(3000),
   image: z.string().regex(/^\/uploads\/[0-9a-f-]+\.(png|jpg|webp)$/i).or(z.literal("")).default(""),
@@ -64,6 +67,26 @@ const UUID_PATTERN =
 
 function hashRequest(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function hasCarouselCapacity(db, announcement, excludedId) {
+  if (!announcement.published || !announcement.showInCarousel) return true;
+  if (excludedId !== undefined) {
+    const existing = db.prepare(`
+      SELECT published, show_in_carousel FROM announcements WHERE id = ?
+    `).get(excludedId);
+    if (existing?.published && existing.show_in_carousel) return true;
+  }
+  const count = excludedId === undefined
+    ? db.prepare(`
+      SELECT COUNT(*) AS count FROM announcements
+      WHERE published = 1 AND show_in_carousel = 1
+    `).get().count
+    : db.prepare(`
+      SELECT COUNT(*) AS count FROM announcements
+      WHERE published = 1 AND show_in_carousel = 1 AND id != ?
+    `).get(excludedId).count;
+  return count < MAX_CAROUSEL_ANNOUNCEMENTS;
 }
 
 function inTransaction(db, operation) {
@@ -370,10 +393,12 @@ export function createApp({
     ...(publicOrigins ?? [
       "http://localhost:3000",
       "http://127.0.0.1:3000",
+      "http://localhost:3001",
     ]),
     "capacitor://localhost",
     "https://localhost",
     "http://localhost",
+    "http://localhost:3001",
   ].map((origin) => origin.trim()).filter(Boolean));
 
   const app = express();
@@ -454,14 +479,15 @@ export function createApp({
 
   app.get("/api/annonces", (_request, response) => {
     const announcements = db.prepare(`
-      SELECT id, title, type, date, lieu, freq, contenu, image,
+      SELECT id, title, type, date, lieu, orateur,
+             orateur_image AS orateurImage, freq, contenu, image,
              show_in_carousel AS showInCarousel
       FROM announcements WHERE published = 1 ORDER BY id DESC
     `).all().map((announcement) => ({
       ...announcement,
       showInCarousel: Boolean(announcement.showInCarousel),
     }));
-    response.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+    response.set("Cache-Control", "no-store");
     response.json(announcements);
   });
 
@@ -684,7 +710,8 @@ export function createApp({
 
   app.get("/api/admin/annonces", (_request, response) => {
     const announcements = db.prepare(`
-      SELECT id, title, type, date, lieu, freq, contenu, image, published,
+      SELECT id, title, type, date, lieu, orateur,
+             orateur_image AS orateurImage, freq, contenu, image, published,
              show_in_carousel AS showInCarousel,
              created_at, updated_at
       FROM announcements ORDER BY id DESC
@@ -747,15 +774,24 @@ export function createApp({
       return;
     }
     const announcement = parsed.data;
+    if (!hasCarouselCapacity(db, announcement)) {
+      response.status(400).json({
+        message: "Le carrousel ne peut pas contenir plus de 7 annonces publiées.",
+      });
+      return;
+    }
     const result = db.prepare(`
       INSERT INTO announcements (
-        title, type, date, lieu, freq, contenu, image, show_in_carousel, published
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        title, type, date, lieu, orateur, orateur_image, freq, contenu, image,
+        show_in_carousel, published
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       announcement.title,
       announcement.type,
       announcement.date,
       announcement.lieu,
+      announcement.orateur,
+      announcement.orateurImage,
       announcement.freq,
       announcement.contenu,
       announcement.image,
@@ -773,16 +809,25 @@ export function createApp({
       return;
     }
     const announcement = parsed.data;
+    if (!hasCarouselCapacity(db, announcement, id)) {
+      response.status(400).json({
+        message: "Le carrousel ne peut pas contenir plus de 7 annonces publiées.",
+      });
+      return;
+    }
     const updated = db.prepare(`
       UPDATE announcements
-      SET title = ?, type = ?, date = ?, lieu = ?, freq = ?, contenu = ?,
-          image = ?, show_in_carousel = ?, published = ?, updated_at = CURRENT_TIMESTAMP
+      SET title = ?, type = ?, date = ?, lieu = ?, orateur = ?, orateur_image = ?,
+          freq = ?, contenu = ?, image = ?, show_in_carousel = ?, published = ?,
+          updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(
       announcement.title,
       announcement.type,
       announcement.date,
       announcement.lieu,
+      announcement.orateur,
+      announcement.orateurImage,
       announcement.freq,
       announcement.contenu,
       announcement.image,

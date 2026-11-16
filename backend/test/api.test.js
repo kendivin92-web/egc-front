@@ -21,10 +21,7 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
     jwtSecret: JWT_SECRET,
     adminEmail: ADMIN_EMAIL,
     adminPassword: ADMIN_PASSWORD,
-    publicOrigins: [
-      "capacitor://localhost",
-      "https://egliseglorieuseduchrist.up.railway.app",
-    ],
+    publicOrigins: ["https://egliseglorieuseduchrist.up.railway.app"],
     trustProxyHops: 1,
   });
   const server = createServer(app);
@@ -70,7 +67,12 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
     allowedPreflight.headers.get("access-control-allow-origin"),
     "https://egliseglorieuseduchrist.up.railway.app",
   );
-  for (const origin of ["capacitor://localhost", "https://localhost", "http://localhost"]) {
+  for (const origin of [
+    "capacitor://localhost",
+    "https://localhost",
+    "http://localhost",
+    "http://localhost:3001",
+  ]) {
     const nativePreflight = await request("/api/admin/auth/login", {
       method: "OPTIONS",
       headers: {
@@ -175,6 +177,8 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
     type: "Culte",
     date: "Dimanche 10h",
     lieu: "Brazzaville",
+    orateur: "Pasteur Alain",
+    orateurImage: "",
     freq: "Hebdomadaire",
     contenu: "Bienvenue à tous.",
     image: "",
@@ -197,6 +201,7 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
   const announcementData = await createdAnnouncement.json();
   const publicAnnouncements = await request("/api/annonces");
   assert.equal(publicAnnouncements.status, 200);
+  assert.equal(publicAnnouncements.headers.get("cache-control"), "no-store");
   assert.equal((await publicAnnouncements.json()).length, 1);
   const missingCarouselImage = await jsonRequest(
     "/api/admin/annonces",
@@ -231,6 +236,7 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
     title: "Séminaire de la jeunesse",
     type: "Séminaire",
     image: uploaded.image,
+    orateurImage: uploaded.image,
     showInCarousel: true,
   };
   const createdSeminar = await jsonRequest(
@@ -244,21 +250,57 @@ test("registrations are idempotent, validated duplicates are blocked, and donati
   assert.equal(publicAnnouncementsWithSeminar.length, 2);
   assert.equal(publicAnnouncementsWithSeminar[0].type, "Séminaire");
   assert.equal(publicAnnouncementsWithSeminar[0].showInCarousel, true);
+  assert.equal(publicAnnouncementsWithSeminar[0].orateur, "Pasteur Alain");
+  assert.equal(publicAnnouncementsWithSeminar[0].orateurImage, uploaded.image);
   const adminAnnouncementList = await request("/api/admin/annonces", {
     headers: adminHeaders,
   });
   assert.equal(adminAnnouncementList.status, 200);
   const adminAnnouncements = await adminAnnouncementList.json();
   assert.equal(adminAnnouncements[0].showInCarousel, true);
+  assert.equal(adminAnnouncements[0].orateur, "Pasteur Alain");
+  assert.equal(adminAnnouncements[0].orateurImage, uploaded.image);
+
+  for (let index = 2; index <= 7; index += 1) {
+    const additionalSlide = await jsonRequest(
+      "/api/admin/annonces",
+      "POST",
+      { ...seminar, title: `Annonce carrousel ${index}` },
+      adminHeaders,
+    );
+    assert.equal(additionalSlide.status, 201);
+  }
+  const eighthSlide = await jsonRequest(
+    "/api/admin/annonces",
+    "POST",
+    { ...seminar, title: "Annonce carrousel 8" },
+    adminHeaders,
+  );
+  assert.equal(eighthSlide.status, 400);
+
+  const overCapacityUpdate = await jsonRequest(
+    `/api/admin/annonces/${announcementData.id}`,
+    "PATCH",
+    { ...announcement, image: uploaded.image, showInCarousel: true },
+    adminHeaders,
+  );
+  assert.equal(overCapacityUpdate.status, 400);
 
   const unpublishedAnnouncement = await jsonRequest(
     `/api/admin/annonces/${announcementData.id}`,
     "PATCH",
-    { ...announcement, image: uploaded.image, showInCarousel: true, published: false },
+    {
+      ...announcement,
+      orateur: "Pasteur modifié",
+      image: uploaded.image,
+      showInCarousel: true,
+      published: false,
+    },
     adminHeaders,
   );
   assert.equal(unpublishedAnnouncement.status, 200);
-  assert.equal((await (await request("/api/annonces")).json()).length, 1);
+  assert.equal((await unpublishedAnnouncement.json()).orateur, "Pasteur modifié");
+  assert.equal((await (await request("/api/annonces")).json()).length, 7);
   const deleteAnnouncement = await request(
     `/api/admin/annonces/${announcementData.id}`,
     { method: "DELETE", headers: adminHeaders },
@@ -444,7 +486,7 @@ test("server refuses weak secrets and bootstrap passwords", () => {
   }), /TRUST_PROXY_HOPS/);
 });
 
-test("existing registration addresses and announcement carousel settings are migrated", async () => {
+test("existing registration addresses and announcement fields are migrated", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "egc-api-migration-test-"));
   const databasePath = path.join(directory, "legacy.sqlite");
   const legacyDb = new DatabaseSync(databasePath);
@@ -508,8 +550,10 @@ test("existing registration addresses and announcement carousel settings are mig
       district: "Bacongo",
     });
     const announcement = db.prepare(
-      "SELECT show_in_carousel FROM announcements WHERE id = 1",
+      "SELECT orateur, orateur_image, show_in_carousel FROM announcements WHERE id = 1",
     ).get();
+    assert.equal(announcement.orateur, "");
+    assert.equal(announcement.orateur_image, "");
     assert.equal(announcement.show_in_carousel, 1);
   } finally {
     db.close();

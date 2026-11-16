@@ -80,6 +80,8 @@ export function openDatabase(databasePath) {
       type TEXT NOT NULL,
       date TEXT NOT NULL DEFAULT '',
       lieu TEXT NOT NULL DEFAULT '',
+      orateur TEXT NOT NULL DEFAULT '',
+      orateur_image TEXT NOT NULL DEFAULT '',
       freq TEXT NOT NULL DEFAULT '',
       contenu TEXT NOT NULL,
       image TEXT NOT NULL DEFAULT '',
@@ -92,6 +94,12 @@ export function openDatabase(databasePath) {
   const announcementColumns = new Set(
     db.prepare("PRAGMA table_info(announcements)").all().map((column) => column.name),
   );
+  if (!announcementColumns.has("orateur")) {
+    db.exec("ALTER TABLE announcements ADD COLUMN orateur TEXT NOT NULL DEFAULT ''");
+  }
+  if (!announcementColumns.has("orateur_image")) {
+    db.exec("ALTER TABLE announcements ADD COLUMN orateur_image TEXT NOT NULL DEFAULT ''");
+  }
   if (!announcementColumns.has("show_in_carousel")) {
     db.exec(`
       ALTER TABLE announcements

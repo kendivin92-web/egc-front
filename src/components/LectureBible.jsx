@@ -1,6 +1,12 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import bibleData from "./segond_1910.json";
+import {
+  getOfflineData,
+  getOfflinePreference,
+  setOfflinePreference,
+} from "../services/offlineStorage.js";
 export default function LectureBible({ dark }) {
+  const [offlineBibleData, setOfflineBibleData] = useState(bibleData);
   // Navigation
   const [selectedTab, setSelectedTab] = useState("bible");
   const [selectedTestament, setSelectedTestament] = useState(null); // 'ancien' ou 'nouveau'
@@ -17,17 +23,49 @@ export default function LectureBible({ dark }) {
       return [];
     }
   });
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getOfflineData("content:bible-segond-1910")
+      .then((savedBible) => {
+        if (active && savedBible) setOfflineBibleData(savedBible);
+      })
+      .catch((error) => {
+        console.error("Impossible de charger la Bible hors ligne depuis IndexedDB :", error);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    getOfflinePreference("egc_bible_favorites")
+      .then((saved) => {
+        if (!active) return;
+        if (Array.isArray(saved)) setFavorites(saved);
+        setFavoritesLoaded(true);
+      })
+      .catch((error) => {
+        console.error("Impossible de charger les favoris Bible depuis IndexedDB :", error);
+        if (active) setFavoritesLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   // --- 1. EXTRACTION SÉCURISÉE DU TABLEAU DE VERSETS ---
   const rawVersesList = useMemo(() => {
-    if (!bibleData) return [];
-    if (Array.isArray(bibleData)) return bibleData;
-    if (Array.isArray(bibleData.verses)) return bibleData.verses;
-    if (Array.isArray(bibleData.versets)) return bibleData.versets;
-    if (Array.isArray(bibleData.data)) return bibleData.data;
-    if (Array.isArray(bibleData.result)) return bibleData.result;
+    if (!offlineBibleData) return [];
+    if (Array.isArray(offlineBibleData)) return offlineBibleData;
+    if (Array.isArray(offlineBibleData.verses)) return offlineBibleData.verses;
+    if (Array.isArray(offlineBibleData.versets)) return offlineBibleData.versets;
+    if (Array.isArray(offlineBibleData.data)) return offlineBibleData.data;
+    if (Array.isArray(offlineBibleData.result)) return offlineBibleData.result;
     return [];
-  }, []);
+  }, [offlineBibleData]);
   // --- 2. REGROUPEMENT AUTOMATIQUE PAR LIVRES ---
   const booksMap = useMemo(() => {
     const map = {};
@@ -138,9 +176,13 @@ export default function LectureBible({ dark }) {
     } catch (e) {
       console.error("Erreur de sauvegarde des favoris", e);
     }
+    setOfflinePreference("egc_bible_favorites", updatedFavorites).catch((error) => {
+      console.error("Impossible d’enregistrer les favoris Bible dans IndexedDB :", error);
+    });
   };
   return (
     <div
+      aria-busy={!favoritesLoaded}
       style={{
         padding: "16px",
         color: dark ? "#ffffff" : "#1f2937",

@@ -6,6 +6,10 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  getOfflinePreference,
+  setOfflinePreference,
+} from "../services/offlineStorage.js";
 
 import planLecture from "../plan_lecture.json";
 import bible from "../bible_segond_21_fr.json";
@@ -789,6 +793,8 @@ useEffect(() => {
     async function initialize() {
       let sqliteProgression = null;
       let sqliteHistorique = null;
+      let offlineProgression = null;
+      let offlineHistorique = null;
 
       // ======================================================
       // TENTATIVE SQLITE
@@ -844,6 +850,18 @@ useEffect(() => {
         );
       }
 
+      try {
+        [offlineProgression, offlineHistorique] = await Promise.all([
+          getOfflinePreference("plan_lecture_progression"),
+          getOfflinePreference("plan_lecture_historique"),
+        ]);
+      } catch (error) {
+        console.error(
+          "Lecture de la progression hors ligne impossible :",
+          error
+        );
+      }
+
       if (!mounted) {
         return;
       }
@@ -852,24 +870,16 @@ useEffect(() => {
       // PROGRESSION
       // ======================================================
 
-      if (sqliteProgression) {
+      if (offlineProgression) {
         setJourActuel(
-          Number(
-            sqliteProgression.jour_actuel
-          ) || 1
+          Number(offlineProgression?.jourActuel) || 1
         );
-
-        setMatinLu(
-          Boolean(
-            sqliteProgression.matin_lu
-          )
-        );
-
-        setSoirLu(
-          Boolean(
-            sqliteProgression.soir_lu
-          )
-        );
+        setMatinLu(Boolean(offlineProgression?.matinLu));
+        setSoirLu(Boolean(offlineProgression?.soirLu));
+      } else if (sqliteProgression) {
+        setJourActuel(Number(sqliteProgression.jour_actuel) || 1);
+        setMatinLu(Boolean(sqliteProgression.matin_lu));
+        setSoirLu(Boolean(sqliteProgression.soir_lu));
       } else {
         // ----------------------------------------------------
         // FALLBACK LOCALSTORAGE
@@ -915,7 +925,9 @@ useEffect(() => {
       // HISTORIQUE
       // ======================================================
 
-      if (
+      if (Array.isArray(offlineHistorique)) {
+        setHistorique(offlineHistorique);
+      } else if (
         Array.isArray(
           sqliteHistorique
         )
@@ -996,6 +1008,15 @@ useEffect(() => {
     } catch (error) {
       console.warn(
         "Impossible de sauvegarder localement :",
+        error
+      );
+    }
+
+    try {
+      await setOfflinePreference("plan_lecture_progression", data);
+    } catch (error) {
+      console.error(
+        "Impossible de sauvegarder la progression dans IndexedDB :",
         error
       );
     }
@@ -1167,6 +1188,13 @@ function ouvrirLecture(type) {
         error
       );
     }
+
+    setOfflinePreference("plan_lecture_historique", nouveauHistorique).catch((error) => {
+      console.error(
+        "Impossible de sauvegarder l’historique dans IndexedDB :",
+        error
+      );
+    });
 
     // --------------------------------------------------------
     // SQLITE

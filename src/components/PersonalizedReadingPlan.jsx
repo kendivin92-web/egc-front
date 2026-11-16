@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import bible from "../bible_segond_21_fr.json";
+import { getOfflinePreference, setOfflinePreference } from "../services/offlineStorage.js";
 
 const THEMES = [
   {
@@ -192,7 +193,32 @@ function readSelectedTheme() {
 export default function PersonalizedReadingPlan({ dark }) {
   const [selectedThemeId, setSelectedThemeId] = useState(readSelectedTheme);
   const [completedVerses, setCompletedVerses] = useState(readCompletedVerses);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const theme = THEMES.find((item) => item.id === selectedThemeId) || THEMES[0];
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      getOfflinePreference(SELECTED_THEME_KEY),
+      getOfflinePreference(STORAGE_KEY),
+    ])
+      .then(([savedTheme, savedVerses]) => {
+        if (!active) return;
+        if (THEMES.some((item) => item.id === savedTheme)) setSelectedThemeId(savedTheme);
+        if (Array.isArray(savedVerses)) {
+          setCompletedVerses(savedVerses.filter((item) => typeof item === "string"));
+        }
+        setPreferencesLoaded(true);
+      })
+      .catch((error) => {
+        console.error("Impossible de charger les préférences du plan depuis IndexedDB :", error);
+        if (active) setPreferencesLoaded(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const readings = useMemo(
     () =>
@@ -209,20 +235,28 @@ export default function PersonalizedReadingPlan({ dark }) {
   );
 
   useEffect(() => {
+    if (!preferencesLoaded) return;
     try {
       localStorage.setItem(SELECTED_THEME_KEY, selectedThemeId);
     } catch (error) {
       console.error("Impossible d’enregistrer le thème du plan personnalisé :", error);
     }
-  }, [selectedThemeId]);
+    setOfflinePreference(SELECTED_THEME_KEY, selectedThemeId).catch((error) => {
+      console.error("Impossible d’enregistrer le thème du plan dans IndexedDB :", error);
+    });
+  }, [preferencesLoaded, selectedThemeId]);
 
   useEffect(() => {
+    if (!preferencesLoaded) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(completedVerses));
     } catch (error) {
       console.error("Impossible d’enregistrer la progression du plan personnalisé :", error);
     }
-  }, [completedVerses]);
+    setOfflinePreference(STORAGE_KEY, completedVerses).catch((error) => {
+      console.error("Impossible d’enregistrer la progression du plan dans IndexedDB :", error);
+    });
+  }, [completedVerses, preferencesLoaded]);
 
   const completedCount = readings.filter((reading) =>
     completedVerses.includes(reading.id),
