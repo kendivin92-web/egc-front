@@ -1,5 +1,10 @@
 {
   "appId": "com.egc.eglise",
   "appName": "EGC",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
 }

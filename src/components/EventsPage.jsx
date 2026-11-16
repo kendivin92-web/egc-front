@@ -1,7 +1,11 @@
 import { useState , useEffect } from "react";
 import { API_URL as API } from "../services/apiConfig";
+import { getOfflineData, setOfflineData } from "../services/offlineStorage.js";
+import { useNetworkStatus } from "../services/useNetworkStatus.js";
+import fallbackImage from "../assets/egc-worship.jpg";
 
 export default function EventsPage({ dark }) {
+const { isOnline } = useNetworkStatus();
 const [EVENTS,setEVENTS] = useState([]);
 const [eventsUnavailable, setEventsUnavailable] = useState(false);
 const [cachedEvents, setCachedEvents] = useState(() => {
@@ -22,13 +26,29 @@ const C = {
   textSub: dark ? "#a1a1a6" : "#6e6e73",
   border: dark ? "#38383a" : "#d2d2d7",
 };
+    useEffect(() => {
+      let active = true;
+      getOfflineData("cache:annonces")
+        .then((cached) => {
+          if (active && Array.isArray(cached)) {
+            setEVENTS((current) => current.length > 0 ? current : cached);
+          }
+        })
+        .catch((error) => {
+          console.error("Impossible de lire les annonces hors ligne :", error);
+        });
+      return () => {
+        active = false;
+      };
+    }, []);
+
    // Récupérer les annonces depuis le serveur
     useEffect(() => {
+      if (!isOnline) return;
       const fetchFideles = async () => {
         try {
-          const token = localStorage.getItem("token");console.log("TOKEN =", token);
           const res = await fetch(`${API}/api/annonces`, {
-            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
           });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           
@@ -36,6 +56,7 @@ const C = {
           if (!Array.isArray(data)) throw new Error("Réponse d’annonces invalide.");
           setEVENTS(data);
           setCachedEvents(data);
+          await setOfflineData("cache:annonces", data);
           localStorage.setItem("evenements", JSON.stringify(data));
           setEventsUnavailable(false);
          
@@ -46,7 +67,7 @@ const C = {
         } 
       };
       fetchFideles();
-    }, []);
+    }, [isOnline]);
 
     useEffect(() => {
       if (EVENTS.length === 0 && cachedEvents.length > 0) setEVENTS(cachedEvents);
@@ -223,13 +244,19 @@ const CATEGORIES = [
                 <div className="relative h-52 overflow-hidden">
   
                   <img
-  
-                    src={API + event.image}
-  
+                    src={
+                      event.image
+                        ? event.image.startsWith("http")
+                          ? event.image
+                          : `${API}/${event.image.replace(/^\/+/, "")}`
+                        : fallbackImage
+                    }
+                    onError={(eventTarget) => {
+                      eventTarget.currentTarget.onerror = null;
+                      eventTarget.currentTarget.src = fallbackImage;
+                    }}
                     alt={event.title}
-  
                     className="w-full h-full object-cover card-img"
-  
                   />
   
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60"></div>
@@ -249,6 +276,28 @@ const CATEGORIES = [
                     {event.title}
   
                   </h3>
+
+                  {event.orateur && (
+                    <div className="flex items-center gap-3 mb-2">
+                      {event.orateurImage && (
+                        <img
+                          src={
+                            event.orateurImage.startsWith("http")
+                              ? event.orateurImage
+                              : `${API}/${event.orateurImage.replace(/^\/+/, "")}`
+                          }
+                          alt={event.orateur}
+                          className="w-10 h-10 rounded-full object-cover"
+                          onError={(eventTarget) => {
+                            eventTarget.currentTarget.style.display = "none";
+                          }}
+                        />
+                      )}
+                      <p className="text-sm font-semibold text-amber-700">
+                        Orateur : {event.orateur}
+                      </p>
+                    </div>
+                  )}
   
                   <p className="text-sm text-stone-500 leading-relaxed">
   
@@ -295,13 +344,19 @@ const CATEGORIES = [
             <div className="relative h-52 overflow-hidden">
   
               <img
-  
-                src={API + selectedEvent.image}
-  
+                src={
+                  selectedEvent.image
+                    ? selectedEvent.image.startsWith("http")
+                      ? selectedEvent.image
+                      : `${API}/${selectedEvent.image.replace(/^\/+/, "")}`
+                    : fallbackImage
+                }
                 alt={selectedEvent.title}
-  
                 className="w-full h-full object-cover"
-  
+                onError={(eventTarget) => {
+                  eventTarget.currentTarget.onerror = null;
+                  eventTarget.currentTarget.src = fallbackImage;
+                }}
               />
   
               <div className=""></div>
@@ -341,6 +396,33 @@ const CATEGORIES = [
               </p>
   
               <div className="grid grid-cols-2 gap-3">
+
+                {selectedEvent.orateur && (
+                  <div className="bg-blue-50 rounded-xl p-3 col-span-2">
+                    <p className="text-xs text-blue-600 mb-1 uppercase tracking-wide">
+                      Orateur
+                    </p>
+                    <div className="flex items-center gap-3">
+                      {selectedEvent.orateurImage && (
+                        <img
+                          src={
+                            selectedEvent.orateurImage.startsWith("http")
+                              ? selectedEvent.orateurImage
+                              : `${API}/${selectedEvent.orateurImage.replace(/^\/+/, "")}`
+                          }
+                          alt={selectedEvent.orateur}
+                          className="w-16 h-16 rounded-full object-cover"
+                          onError={(eventTarget) => {
+                            eventTarget.currentTarget.style.display = "none";
+                          }}
+                        />
+                      )}
+                      <p className="text-sm font-semibold text-blue-800">
+                        {selectedEvent.orateur}
+                      </p>
+                    </div>
+                  </div>
+                )}
   
                 <div className="bg-stone-50 rounded-xl p-3">
   
@@ -406,4 +488,3 @@ const CATEGORIES = [
   );
   
 }
-

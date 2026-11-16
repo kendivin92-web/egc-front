@@ -7,6 +7,9 @@ import { StatusBar, Style } from '@capacitor/status-bar'
 import './App.css'
 import App from './App.jsx'
 import BackButtonHandler from "./components/BackButtonHandler.jsx";
+import { initializeOfflineStorage } from "./services/offlineStorage.js";
+import { NetworkStatusProvider } from "./services/NetworkStatus.jsx";
+import { API_URL } from "./services/apiConfig.js";
 
 
 // ─────────────────────────────────────────────
@@ -25,11 +28,29 @@ if (Capacitor.isNativePlatform()) {
 // ─────────────────────────────────────────────
 // APPLICATION
 // ─────────────────────────────────────────────
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <BrowserRouter>
-      <BackButtonHandler />
-      <App />
-    </BrowserRouter>
-  </StrictMode>,
-)
+const root = createRoot(document.getElementById('root'));
+
+if ("serviceWorker" in navigator) {
+  const serviceWorkerUrl = `/service-worker.js?apiOrigin=${encodeURIComponent(API_URL)}`;
+  navigator.serviceWorker.register(serviceWorkerUrl)
+    .catch((error) => {
+      console.error("Impossible d’activer le cache hors ligne des images :", error);
+    });
+}
+
+initializeOfflineStorage()
+  .catch((error) => {
+    console.error("Le cache IndexedDB n’a pas pu être initialisé :", error);
+  })
+  .finally(() => {
+    root.render(
+      <StrictMode>
+        <NetworkStatusProvider>
+          <BrowserRouter>
+            <BackButtonHandler />
+            <App />
+          </BrowserRouter>
+        </NetworkStatusProvider>
+      </StrictMode>,
+    );
+  });

@@ -41,6 +41,7 @@ export const Lives = ({ dark }) => {
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [videosLoading, setVideosLoading] = useState(() => videos.length === 0);
   const [videosError, setVideosError] = useState("");
+  const [liveLoading, setLiveLoading] = useState(true);
   const liveVideoId = live?.videoId || (live?.url
     ? (() => {
       try {
@@ -56,7 +57,6 @@ export const Lives = ({ dark }) => {
     ? { id: liveVideoId, title: "Direct de l’église" }
     : selectedVideo || videos[0] || null;
 
-  const liveLoading = false;
   const formatDate = (value) => {
     const date = new Date(value);
     return Number.isNaN(date.getTime())
@@ -65,6 +65,38 @@ export const Lives = ({ dark }) => {
   };
   const getSundayLabel = (video, index) =>
     SUNDAY_LABELS[(video.sundayOfMonth || index + 1) - 1] || SUNDAY_LABELS[index];
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadLive = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/live`, { signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok || typeof data?.actif !== "boolean") {
+          throw new Error(data?.message || "Réponse de statut du direct invalide.");
+        }
+        if (
+          (data.actif && !/^[\w-]{11}$/.test(data.videoId || "")) ||
+          (!data.actif && typeof data.url !== "string")
+        ) {
+          throw new Error("Réponse de statut du direct invalide.");
+        }
+
+        setLive(data);
+        localStorage.setItem(LIVE_CACHE_KEY, JSON.stringify(data));
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error("Impossible de charger le statut du direct :", error);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLiveLoading(false);
+      }
+    };
+
+    loadLive();
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
