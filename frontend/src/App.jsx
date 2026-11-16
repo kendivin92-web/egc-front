@@ -36,6 +36,63 @@ import imageLocal from "./assets/1234.jpg";
 import churchImage from "./assets/egc-worship.jpg";
 
 const COMING_SOON_MESSAGE = "Cette rubrique sera bientôt disponible dans les prochaines versions.";
+const MAX_CAROUSEL_SLIDES = 7;
+const PLATFORM_DEMOS = [
+  {
+    id: "bible",
+    eyebrow: "LA PAROLE AU QUOTIDIEN",
+    title: "Vous souhaitez lire la Bible chaque jour ?",
+    description: "Ouvrez la Bible dans l’application et retrouvez la Parole où que vous soyez.",
+    icon: "bible",
+    actionLabel: "Lire la Bible",
+    path: "/bible",
+  },
+  {
+    id: "announcements",
+    eyebrow: "LA VIE DE L’ÉGLISE",
+    title: "Vous voulez connaître les annonces de l’Église ?",
+    description: "Ouvrez Événements pour consulter les cultes, programmes et rendez-vous de la semaine.",
+    icon: "calendar",
+    actionLabel: "Voir les événements",
+    path: "/events",
+  },
+  {
+    id: "live",
+    eyebrow: "L’ÉGLISE EN DIRECT",
+    title: "Vous avez manqué un culte ?",
+    description: "Pas de panique : retrouvez sa rediffusion dans la partie Direct de l’application et suivez les cultes en cours.",
+    icon: "media",
+    actionLabel: "Voir le direct et les rediffusions",
+    path: "/live",
+  },
+  {
+    id: "locations",
+    eyebrow: "NOS ASSEMBLÉES",
+    title: "Vous cherchez une assemblée près de vous ?",
+    description: "Consultez la carte pour trouver les différentes Églises Glorieuses du Christ.",
+    icon: "location",
+    actionLabel: "Trouver mon Église",
+    path: "/localisation",
+  },
+  {
+    id: "invitation",
+    eyebrow: "LE PARTAGE CONTINUE",
+    title: "Vous voulez inviter vos membres ?",
+    description: "Partagez l’application avec vos proches et votre communauté en quelques instants.",
+    icon: "members",
+    actionLabel: "Inviter mes proches",
+    path: "/invitation",
+  },
+  {
+    id: "contact",
+    eyebrow: "RESTONS EN CONTACT",
+    title: "Besoin de joindre l’Église ?",
+    description: "Retrouvez son numéro et appelez directement l’Église Glorieuse du Christ depuis l’application.",
+    icon: "phone",
+    actionLabel: "Appeler l’Église",
+    href: "tel:+242067527474",
+  },
+];
 
 function ComingSoonScreen({ dark }) {
   return (
@@ -123,6 +180,8 @@ export default function EgliseFoiVictoire() {
     }
   });
   const [slide, setSlide] = useState(0);
+  const [carouselMode, setCarouselMode] = useState("purpose");
+  const [panelTransitionReady, setPanelTransitionReady] = useState(false);
   const [navVisible, setNavVisible] = useState(true);
   const [activeFeature, setActiveFeature] = useState(null);
   const [futureVersionsOpen, setFutureVersionsOpen] = useState(false);
@@ -214,15 +273,30 @@ useEffect(() => {
 
   // Auto-advance carousel
 
-  const carouselSlideCount = Math.min(getCarouselSlides(announcements).length, 4);
+  const visibleSlides = getCarouselSlides(announcements).slice(0, MAX_CAROUSEL_SLIDES);
+  const isPurposeMode = carouselMode === "purpose";
+  const carouselSlideCount = Math.max(
+    isPurposeMode ? PLATFORM_DEMOS.length : visibleSlides.length,
+    1,
+  );
+  const activeCarouselSlideIndex = slide % carouselSlideCount;
+  const activePlatformDemo = isPurposeMode ? PLATFORM_DEMOS[activeCarouselSlideIndex] : null;
+  const activeAnnouncement = isPurposeMode ? null : visibleSlides[activeCarouselSlideIndex];
+
   useEffect(() => {
-    if (carouselSlideCount === 0) return;
+    setPanelTransitionReady(false);
+    const frame = window.requestAnimationFrame(() => setPanelTransitionReady(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [carouselMode, announcements, slide]);
+
+  useEffect(() => {
+    if (carouselSlideCount <= 1) return undefined;
     const t = setInterval(
-      () => setSlide((s) => (s + 1) % carouselSlideCount),
+      () => setSlide((current) => (current + 1) % carouselSlideCount),
       5000
     );
     return () => clearInterval(t);
-  }, [carouselSlideCount]);
+  }, [carouselMode, carouselSlideCount]);
 
   // Hide/show nav on scroll
   const handleScroll = useCallback((e) => {
@@ -239,12 +313,11 @@ useEffect(() => {
   const onTouchEnd = (e) => {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    const slideCount = carouselSlideCount;
-    if (Math.abs(diff) > 40 && slideCount > 0)
+    if (Math.abs(diff) > 40 && carouselSlideCount > 1)
       setSlide((s) =>
         diff > 0
-          ? (s + 1) % slideCount
-          : (s - 1 + slideCount) % slideCount
+          ? (s + 1) % carouselSlideCount
+          : (s - 1 + carouselSlideCount) % carouselSlideCount
       );
     touchStartX.current = null;
   };
@@ -253,7 +326,6 @@ useEffect(() => {
   // "home" → "/"   |   les autres → "/<id>"
   const goTo = (id) => navigate(id === "home" ? "/" : `/${id}`);
 
-  const visibleSlides = getCarouselSlides(announcements).slice(-4);
   const renderHome = () => (
     <div className="home-dashboard">
       <section className="home-welcome">
@@ -264,30 +336,166 @@ useEffect(() => {
 
       <section
         className="home-hero"
-        aria-label="Actualités de l'Église"
+        aria-label="Découvrir la plateforme et les annonces"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        {visibleSlides.length > 0 ? (
-          visibleSlides.map((item, index) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`home-hero-slide${index === slide % visibleSlides.length ? " is-active" : ""}`}
-              style={{
-                backgroundImage: `url("${getImageUrl(item.image)}")`,
+        <div className="home-hero-modes" role="tablist" aria-label="Choisir le contenu du carrousel">
+          <button
+            id="carousel-purpose-tab"
+            className={`home-hero-mode${isPurposeMode ? " is-active" : ""}`}
+            type="button"
+            role="tab"
+            aria-selected={isPurposeMode}
+            aria-controls="home-hero-panel"
+            onClick={() => {
+              setCarouselMode("purpose");
+              setSlide(0);
+            }}
+          >
+            But de la plateforme
+          </button>
+          <button
+            id="carousel-announcements-tab"
+            className={`home-hero-mode${!isPurposeMode ? " is-active" : ""}`}
+            type="button"
+            role="tab"
+            aria-selected={!isPurposeMode}
+            aria-controls="home-hero-panel"
+            onClick={() => {
+              setCarouselMode("announcements");
+              setSlide(0);
+            }}
+          >
+            Annonces
+          </button>
+        </div>
+
+        {isPurposeMode && activePlatformDemo ? (
+          <article
+            key={`platform-${activePlatformDemo.id}`}
+            id="home-hero-panel"
+            className={`home-hero-slide home-hero-intro is-active${panelTransitionReady ? " is-entered" : ""}`}
+            role="tabpanel"
+            aria-labelledby="carousel-purpose-tab"
+          >
+            <img className="home-hero-brand-watermark" src={logo} alt="" aria-hidden="true" />
+            <div className="home-hero-intro-content">
+              <div className="home-hero-intro-kicker">
+                <span className="home-hero-intro-icon" aria-hidden="true">
+                  <Icon name={activePlatformDemo.icon} size={27} color="#f0d68e" />
+                </span>
+                <span className="home-hero-intro-eyebrow">{activePlatformDemo.eyebrow}</span>
+              </div>
+              <h2>{activePlatformDemo.title}</h2>
+              <p>{activePlatformDemo.description}</p>
+              {activePlatformDemo.path ? (
+                <button
+                  className="home-hero-content-action"
+                  type="button"
+                  onClick={() => navigate(activePlatformDemo.path)}
+                >
+                  {activePlatformDemo.actionLabel}
+                  <Icon name="chevronRight" size={17} color="#17233b" />
+                </button>
+              ) : (
+                <a className="home-hero-content-action" href={activePlatformDemo.href}>
+                  {activePlatformDemo.actionLabel}
+                  <Icon name="phone" size={17} color="#17233b" />
+                </a>
+              )}
+            </div>
+            <span className="home-hero-intro-orbit" aria-hidden="true" />
+          </article>
+        ) : !isPurposeMode && activeAnnouncement ? (
+          <article
+            key={`announcement-${activeAnnouncement.id}`}
+            id="home-hero-panel"
+            className="home-hero-slide home-hero-announcement is-active"
+            role="tabpanel"
+            aria-labelledby="carousel-announcements-tab"
+          >
+            <img
+              className="home-hero-announcement-image"
+              src={getImageUrl(activeAnnouncement.image)}
+              alt=""
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = churchImage;
               }}
-              aria-hidden={index !== slide % visibleSlides.length}
-              aria-label={`Ouvrir les actualités : ${item.title || item.titre || "Vivez votre foi avec nous"}`}
-              onClick={() => navigate("/events")}
-              tabIndex={index === slide % visibleSlides.length ? 0 : -1}
             />
-          ))
-        ) : (
-          <div className="home-hero-slide is-active home-hero-fallback">
+            <div className="home-hero-announcement-shade" />
+            <div className="home-hero-announcement-content">
+              <span className="home-hero-intro-eyebrow">
+                {activeAnnouncement.type || "ANNONCE"} · À LA UNE
+              </span>
+              <h2>{activeAnnouncement.title || activeAnnouncement.titre}</h2>
+              <p className="home-hero-announcement-meta">
+                {[activeAnnouncement.dateEvent || activeAnnouncement.date || activeAnnouncement.freq,
+                  activeAnnouncement.lieu].filter(Boolean).join(" · ")}
+              </p>
+              {activeAnnouncement.orateur && (
+                <div className="home-hero-speaker">
+                  {activeAnnouncement.orateurImage ? (
+                    <img
+                      src={getImageUrl(activeAnnouncement.orateurImage)}
+                      alt=""
+                      onError={(event) => {
+                        event.currentTarget.onerror = null;
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <span className="home-hero-speaker-initial" aria-hidden="true">
+                      {activeAnnouncement.orateur.trim().charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <span>
+                    <small>ORATEUR</small>
+                    <strong>{activeAnnouncement.orateur}</strong>
+                  </span>
+                </div>
+              )}
+              <p className="home-hero-announcement-description">
+                {(activeAnnouncement.contenu || "").slice(0, 150)}
+                {(activeAnnouncement.contenu || "").length > 150 ? "…" : ""}
+              </p>
+              <button
+                className="home-hero-content-action"
+                type="button"
+                onClick={() => navigate("/events")}
+              >
+                Découvrir l’annonce
+                <Icon name="chevronRight" size={17} color="#17233b" />
+              </button>
+            </div>
+          </article>
+        ) : !isPurposeMode ? (
+          <div
+            id="home-hero-panel"
+            className="home-hero-empty"
+            role="tabpanel"
+            aria-labelledby="carousel-announcements-tab"
+            aria-live="polite"
+          >
+            <span className="home-hero-empty-icon" aria-hidden="true">
+              <Icon name="calendar" size={27} color="#f0d68e" />
+            </span>
+            <span className="home-hero-intro-eyebrow">LES NOUVELLES DE L’ÉGLISE</span>
+            <h2>Les prochaines annonces arrivent ici</h2>
+            <p>Les annonces publiées et sélectionnées dans l’administration apparaîtront dans ce carrousel.</p>
+            <button
+              className="home-hero-content-action"
+              type="button"
+              onClick={() => navigate("/events")}
+            >
+              Voir tous les événements
+              <Icon name="chevronRight" size={17} color="#17233b" />
+            </button>
           </div>
-        )}
-        {visibleSlides.length > 1 && (
+        ) : null}
+
+        {carouselSlideCount > 1 && (
           <>
             <div className="home-hero-controls">
               {[
@@ -299,21 +507,21 @@ useEffect(() => {
                   type="button"
                   aria-label={label}
                   onClick={() =>
-                    setSlide((current) => (current + direction + visibleSlides.length) % visibleSlides.length)
+                    setSlide((current) => (current + direction + carouselSlideCount) % carouselSlideCount)
                   }
                 >
                   <Icon name={icon} size={18} color="#fff" />
                 </button>
               ))}
             </div>
-            <div className="home-hero-dots" aria-label="Sélectionner une actualité">
-              {visibleSlides.map((item, index) => (
+            <div className="home-hero-dots" aria-label="Sélectionner une diapositive">
+              {Array.from({ length: carouselSlideCount }, (_, index) => (
                 <button
-                  key={item.id}
+                  key={index}
                   type="button"
-                  aria-label={`Actualité ${index + 1}`}
-                  aria-current={index === slide % visibleSlides.length}
-                  className={index === slide % visibleSlides.length ? "is-active" : ""}
+                  aria-label={`${carouselMode === "purpose" ? "Fonction" : "Annonce"} ${index + 1}`}
+                  aria-current={index === activeCarouselSlideIndex}
+                  className={index === activeCarouselSlideIndex ? "is-active" : ""}
                   onClick={() => setSlide(index)}
                 />
               ))}

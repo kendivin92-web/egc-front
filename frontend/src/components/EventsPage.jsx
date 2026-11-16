@@ -5,6 +5,11 @@ import churchImage from "../assets/egc-worship.jpg";
 import imageLocal from "../assets/1234.jpg";
 
 const API = API_URL;
+const getImageUrl = (image) => {
+  if (!image) return "";
+  if (image.startsWith("http") || image.includes("/assets/")) return image;
+  return `${API}/${image.replace(/^\/+/, "")}`;
+};
 const DEFAULT_EVENTS = [
   {
     id: "local-sunday-service",
@@ -213,9 +218,7 @@ const CATEGORIES = [
   
                   {event.image && (
                     <img
-                      src={event.image?.startsWith("http") || event.image?.includes("/assets/")
-                        ? event.image
-                        : `${API}/${event.image?.replace(/^\/+/, "")}`}
+                      src={getImageUrl(event.image)}
                       alt={event.title}
                       className="w-full h-full object-cover card-img"
                     />
@@ -246,8 +249,26 @@ const CATEGORIES = [
                       ? event.contenu.slice(0, 80) + "..."
   
                       : event.contenu}
-  
                   </p>
+                  {event.orateur && (
+                    <div className="mt-4 flex items-center gap-3">
+                      {event.orateurImage ? (
+                        <img
+                          src={getImageUrl(event.orateurImage)}
+                          alt={`Photo de ${event.orateur}`}
+                          className="h-10 w-10 rounded-full border-2 border-amber-300 object-cover"
+                        />
+                      ) : (
+                        <span className="grid h-10 w-10 place-items-center rounded-full bg-blue-900 text-sm font-bold text-amber-200">
+                          {event.orateur.trim().charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <span>
+                        <span className="block text-[10px] font-bold uppercase tracking-widest text-amber-700">Orateur</span>
+                        <span className="text-sm font-semibold text-stone-800">{event.orateur}</span>
+                      </span>
+                    </div>
+                  )}
   
                 </div>
   
@@ -285,9 +306,7 @@ const CATEGORIES = [
   
               {selectedEvent.image && (
                 <img
-                  src={selectedEvent.image?.startsWith("http") || selectedEvent.image?.includes("/assets/")
-                    ? selectedEvent.image
-                    : `${API}/${selectedEvent.image?.replace(/^\/+/, "")}`}
+                  src={getImageUrl(selectedEvent.image)}
                   alt={selectedEvent.title}
                   className="w-full h-full object-cover"
                 />
@@ -324,10 +343,27 @@ const CATEGORIES = [
               </h3>
   
               <p className="text-sm text-stone-500 leading-relaxed mb-5">
-  
                 {selectedEvent.contenu}
-  
               </p>
+              {selectedEvent.orateur && (
+                <div className="mb-5 flex items-center gap-3 rounded-xl bg-blue-50 p-3">
+                  {selectedEvent.orateurImage ? (
+                    <img
+                      src={getImageUrl(selectedEvent.orateurImage)}
+                      alt={`Photo de ${selectedEvent.orateur}`}
+                      className="h-12 w-12 rounded-full border-2 border-amber-300 object-cover"
+                    />
+                  ) : (
+                    <span className="grid h-12 w-12 place-items-center rounded-full bg-blue-900 font-bold text-amber-200">
+                      {selectedEvent.orateur.trim().charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <span>
+                    <span className="block text-xs font-bold uppercase tracking-widest text-amber-700">Orateur</span>
+                    <span className="font-semibold text-blue-900">{selectedEvent.orateur}</span>
+                  </span>
+                </div>
+              )}
   
               <div className="grid grid-cols-2 gap-3">
   

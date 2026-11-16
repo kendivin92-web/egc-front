@@ -10,6 +10,8 @@ const EMPTY_FORM = {
   type: "Culte",
   date: "",
   lieu: "",
+  orateur: "",
+  orateurImage: "",
   freq: "",
   contenu: "",
   image: "",
@@ -55,12 +57,20 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [speakerImageFile, setSpeakerImageFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const publishedCount = announcements.filter((announcement) => announcement.published).length;
-  const carouselCount = announcements.filter((announcement) => announcement.showInCarousel).length;
+  const carouselCount = announcements.filter(
+    (announcement) => announcement.published && announcement.showInCarousel,
+  ).length;
+  const keepsCarouselSlot = announcements.some(
+    (announcement) =>
+      announcement.id === editingId && announcement.published && announcement.showInCarousel,
+  );
+  const canAddCarouselSlide = carouselCount < 7 || keepsCarouselSlot;
   const categoryMetrics = [...new Set(announcements.map((announcement) => announcement.type))]
     .map((type) => ({
       label: type,
@@ -113,6 +123,7 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setImageFile(null);
+    setSpeakerImageFile(null);
     setEditingId(null);
   };
 
@@ -141,6 +152,25 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
         image = uploadData.image;
       }
 
+      let orateurImage = form.orateurImage;
+      if (speakerImageFile) {
+        const upload = await fetch(`${API}/api/admin/uploads`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": speakerImageFile.type,
+          },
+          body: speakerImageFile,
+        });
+        const uploadData = await upload.json();
+        if (upload.status === 401) {
+          onSessionExpired();
+          return;
+        }
+        if (!upload.ok) throw new Error(uploadData.message || "Import de la photo de l’orateur impossible.");
+        orateurImage = uploadData.image;
+      }
+
       const response = await fetch(
         `${API}/api/admin/annonces${editingId ? `/${editingId}` : ""}`,
         {
@@ -149,7 +179,7 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ ...form, image }),
+          body: JSON.stringify({ ...form, image, orateurImage }),
         },
       );
       const data = response.status === 204 ? null : await response.json();
@@ -172,11 +202,14 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
   const editAnnouncement = (announcement) => {
     setEditingId(announcement.id);
     setImageFile(null);
+    setSpeakerImageFile(null);
     setForm({
       title: announcement.title,
       type: announcement.type,
       date: announcement.date,
       lieu: announcement.lieu,
+      orateur: announcement.orateur ?? "",
+      orateurImage: announcement.orateurImage ?? "",
       freq: announcement.freq,
       contenu: announcement.contenu,
       image: announcement.image,
@@ -326,6 +359,24 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
             <input name="lieu" value={form.lieu} onChange={updateForm} maxLength={120} />
           </label>
           <label>
+            Orateur
+            <input
+              name="orateur"
+              value={form.orateur}
+              onChange={updateForm}
+              maxLength={120}
+              placeholder="Nom de la personne qui prêchera"
+            />
+          </label>
+          <label className="admin-announcement-image">
+            Photo de l’orateur (JPEG, PNG ou WebP, 5 Mo maximum)
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(event) => setSpeakerImageFile(event.target.files?.[0] ?? null)}
+            />
+          </label>
+          <label>
             Fréquence ou heure
             <input
               name="freq"
@@ -362,14 +413,27 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
               name="showInCarousel"
               checked={form.showInCarousel}
               onChange={updateForm}
-              disabled={!imageFile && !form.image}
+              disabled={(!imageFile && !form.image) || (!form.showInCarousel && !canAddCarouselSlide)}
             />
             Afficher l’image dans le carrousel d’accueil
           </label>
         </div>
+        <p className="admin-announcement-file">
+          Carrousel : {carouselCount}/7 images maximum, avec un défilement toutes les 5 secondes.
+        </p>
         {imageFile && <p className="admin-announcement-file">Image sélectionnée : {imageFile.name}</p>}
         {!imageFile && form.image && (
           <img className="admin-announcement-preview" src={`${API}${form.image}`} alt="Aperçu de l’image de l’annonce" />
+        )}
+        {speakerImageFile && (
+          <p className="admin-announcement-file">Photo de l’orateur sélectionnée : {speakerImageFile.name}</p>
+        )}
+        {!speakerImageFile && form.orateurImage && (
+          <img
+            className="admin-announcement-preview"
+            src={`${API}${form.orateurImage}`}
+            alt={`Photo de ${form.orateur || "l’orateur"}`}
+          />
         )}
         <div className="admin-announcement-actions">
           <button className="admin-primary-button" type="submit" disabled={saving}>
@@ -403,6 +467,7 @@ export default function AdminAnnouncements({ token, onSessionExpired }) {
                   {announcement.showInCarousel ? "Dans le carrousel" : "Hors carrousel"}
                 </p>
                 <p>{announcement.lieu || "Lieu à confirmer"}</p>
+                {announcement.orateur && <p>Orateur : {announcement.orateur}</p>}
               </div>
               <div className="admin-record-actions">
                 <button type="button" className="admin-secondary-button" onClick={() => editAnnouncement(announcement)}>
