@@ -5,8 +5,14 @@ export const FEATURES = [
   { id: "about", label: "À Propos", icon: "about", path: "/about" },
   { id: "invitation", label: "Invitation", icon: "members", path: "/invitation" },
   { id: "find_church", label: "Trouver mon église", icon: "location", path: "/localisation" },
-  { id: "admin", label: "Administration", icon: "user", path: "/admin" },
 ];
+
+export const RAILWAY_ADMIN_FEATURE = {
+  id: "admin",
+  label: "Administration",
+  icon: "user",
+  path: "/admin",
+};
 
 export const FUTURE_FEATURES = [
   { id: "offerings", label: "Offrandes et dîmes", icon: "offerings", path: "/give" },

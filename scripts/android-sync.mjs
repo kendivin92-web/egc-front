@@ -8,12 +8,13 @@ const apkPath = resolve(root, 'public', 'app-egc.apk')
 const backupPath = resolve(root, '.app-egc.apk.android-build-backup')
 const isWindows = process.platform === 'win32'
 
-function run(command, args, cwd = root) {
+function run(command, args, cwd = root, env = process.env) {
   const result = spawnSync(
     isWindows ? process.env.ComSpec || 'cmd.exe' : command,
     isWindows ? ['/d', '/s', '/c', [command, ...args].join(' ')] : args,
     {
       cwd,
+      env,
       shell: false,
       stdio: 'inherit',
     },
@@ -37,7 +38,10 @@ try {
     apkMoved = true
   }
 
-  run(isWindows ? 'npm.cmd' : 'npm', ['run', 'build'])
+  run(isWindows ? 'npm.cmd' : 'npm', ['run', 'build'], root, {
+    ...process.env,
+    VITE_RAILWAY_ADMIN: 'false',
+  })
   run(isWindows ? 'npx.cmd' : 'npx', ['cap', 'sync', 'android'])
   run(isWindows ? 'gradlew.bat' : './gradlew', [':app:assembleDebug'], resolve(root, 'android'))
 } catch (error) {

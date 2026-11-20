@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useEffect, useRef, useCallback } from "react"
 import { Navigate, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar } from '@capacitor/status-bar';
+const RAILWAY_ADMIN_ENABLED = import.meta.env.VITE_RAILWAY_ADMIN === "true";
 const LocationMap = lazy(() => import("./components/LocationMap"));
 const PersonalizedReadingPlan = lazy(() => import("./components/PersonalizedReadingPlan"));
 const GiveScreen = lazy(() => import("./components/GiveScreen"));
@@ -22,13 +23,20 @@ const LectureBible = lazy(() => import("./components/LectureBible"));
 const About = lazy(() => import("./components/About"));
 const Testimony = lazy(() => import("./components/Testimony"));
 const Invitation = lazy(() => import("./components/Invitation"));
-const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
+const AdminDashboard = RAILWAY_ADMIN_ENABLED
+  ? lazy(() => import("./components/AdminDashboard"))
+  : null;
 import logo from "./assets/logoNew.png";
 import {
   Icon,
   ProfileScreen, BibleScreen,
 } from "./components/carouselSlides";
-import { FEATURES, FUTURE_FEATURES, NAV_ITEMS } from "./components/homeConfig";
+import {
+  FEATURES,
+  FUTURE_FEATURES,
+  NAV_ITEMS,
+  RAILWAY_ADMIN_FEATURE,
+} from "./components/homeConfig";
 import Footer from "./components/Footer";
 import { API_URL } from "./services/apiConfig.js";
 const URL = API_URL;
@@ -166,6 +174,14 @@ const getImageUrl = (image) => {
 };
 
 export default function EgliseFoiVictoire() {
+  const isRailwayWeb =
+    RAILWAY_ADMIN_ENABLED &&
+    !Capacitor.isNativePlatform() &&
+    (window.location.hostname === "railway.app" ||
+      window.location.hostname.endsWith(".railway.app"));
+  const homeFeatures = isRailwayWeb
+    ? [...FEATURES, RAILWAY_ADMIN_FEATURE]
+    : FEATURES;
   const [dark, setDark] = useState(() => {
     const savedTheme = localStorage.getItem("theme");
     return savedTheme === "dark";
@@ -193,7 +209,9 @@ export default function EgliseFoiVictoire() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const hideLayout = location.pathname === "/connexion" || location.pathname === "/admin";
+  const hideLayout =
+    location.pathname === "/connexion" ||
+    (location.pathname === "/admin" && isRailwayWeb);
 
   // Déduit l'onglet actif depuis l'URL  ( "/" → "home", "/bible" → "bible" … )
   const activeNav = location.pathname.replace("/", "") || "home";
@@ -515,10 +533,10 @@ useEffect(() => {
             <span className="home-eyebrow">À PORTÉE DE MAIN</span>
             <h2>Explorer</h2>
           </div>
-          <span className="home-section-count">{String(FEATURES.length).padStart(2, "0")}</span>
+          <span className="home-section-count">{String(homeFeatures.length).padStart(2, "0")}</span>
         </div>
         <div className="home-feature-grid">
-          {FEATURES.map((feature) => {
+          {homeFeatures.map((feature) => {
             const active = activeFeature === feature.id;
             return (
               <button
@@ -761,7 +779,10 @@ useEffect(() => {
           <Route path="/events" element={<EventsPage dark={dark} />} />
           {/* Ancienne fonctionnalité conservée : <Route path="/inscription" element={<Inscription dark={dark} />} /> */}
           <Route path="/inscription" element={<ComingSoonScreen dark={dark} />} />
-          <Route path="/connexion" element={<Navigate to="/admin" replace />} />
+          <Route
+            path="/connexion"
+            element={<Navigate to={isRailwayWeb ? "/admin" : "/"} replace />}
+          />
           {/* Ancienne fonctionnalité conservée : <Route path="/formations" element={<Formations dark={dark} />} /> */}
           <Route path="/formations" element={<ComingSoonScreen dark={dark} />} />
           <Route path="/live" element={<Lives dark={dark} />} />
@@ -778,7 +799,14 @@ useEffect(() => {
           <Route path="/encouragement" element={<Encouragement dark={dark} />} />
           <Route path="/localisation" element={<LocationMap dark={dark} />} />
           <Route path="/invitation" element={<Invitation dark={dark} />} />
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route
+            path="/admin"
+            element={
+              isRailwayWeb && AdminDashboard
+                ? <AdminDashboard />
+                : <Navigate to="/" replace />
+            }
+          />
         </Routes>
         </Suspense>
       </div>
